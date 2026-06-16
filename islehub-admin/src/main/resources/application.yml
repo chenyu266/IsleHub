@@ -1,0 +1,36 @@
+server:
+  port: 8080
+
+spring:
+  config:
+    import: env.properties
+  profiles:
+    active: dev
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+    serialization:
+      write-dates-as-timestamps: false
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 20MB
+
+mybatis-plus:
+  mapper-locations: classpath*:mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      id-type: auto
+
+upload:
+  path: uploads
+
+sa-token:
+  token-name: islehub-token
+  timeout: 86400
+  is-concurrent: true
+  is-share: false
+  token-style: random-128

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.islehub.product.mapper.ProductMapper">
+
+    <resultMap id="ProductDetailMap" type="com.islehub.product.entity.Product"
+               autoMapping="true">
+        <id column="id" property="id"/>
+        <result column="category_name" property="categoryName"/>
+        <collection property="skus" ofType="com.islehub.product.entity.ProductSku"
+                    resultMap="com.islehub.product.mapper.ProductSkuMapper.SkuResultMap"
+                    columnPrefix="sku_"/>
+    </resultMap>
+
+    <select id="pageProducts" resultType="com.islehub.product.entity.Product">
+        SELECT p.*, c.name AS category_name
+        FROM product p
+        LEFT JOIN category c ON p.category_id = c.id
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND p.name LIKE CONCAT('%', #{keyword}, '%')
+            </if>
+            <if test="categoryId != null and categoryId > 0">
+                AND p.category_id = #{categoryId}
+            </if>
+            <if test="status != null">
+                AND p.status = #{status}
+            </if>
+        </where>
+        ORDER BY p.created_at DESC
+    </select>
+
+    <select id="selectDetailById" resultMap="ProductDetailMap">
+        SELECT p.*, c.name AS category_name,
+               sk.id        AS sku_id,
+               sk.product_id AS sku_product_id,
+               sk.sku_code  AS sku_sku_code,
+               sk.spec      AS sku_spec,
+               sk.price     AS sku_price,
+               sk.stock     AS sku_stock,
+               sk.status    AS sku_status
+        FROM product p
+        LEFT JOIN category c ON p.category_id = c.id
+        LEFT JOIN product_sku sk ON sk.product_id = p.id AND sk.status = 1
+        WHERE p.id = #{id}
+    </select>
+
+</mapper>

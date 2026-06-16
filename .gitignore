@@ -1,0 +1,32 @@
+# Tool configs
+.superpowers/
+.claude/
+docs/
+
+# Dependencies
+node_modules/
+
+# Build output
+target/
+dist/
+
+# Runtime data
+uploads/
+
+# IDE / Editor
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Environment
+.env

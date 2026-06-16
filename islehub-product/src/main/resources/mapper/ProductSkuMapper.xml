@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.islehub.product.mapper.ProductSkuMapper">
+
+    <resultMap id="SkuResultMap" type="com.islehub.product.entity.ProductSku"
+               autoMapping="true">
+        <id column="id" property="id"/>
+    </resultMap>
+
+    <select id="selectByProductIds" resultMap="SkuResultMap">
+        SELECT * FROM product_sku
+        WHERE product_id IN
+        <foreach item="id" collection="ids" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        AND status = 1
+    </select>
+
+</mapper>
