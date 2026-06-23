@@ -46,8 +46,8 @@ const selectedAddressId = ref(null)
 const remark = ref('')
 
 onMounted(async () => {
-  try { cartItems.value = (await getCart()).data || [] } catch {}
-  try { addresses.value = (await getAddresses()).data || [] } catch {}
+  try { cartItems.value = (await getCart()).data || [] } catch { ElMessage.error('加载购物车失败') }
+  try { addresses.value = (await getAddresses()).data || [] } catch { ElMessage.error('加载地址失败') }
   if (addresses.value.length > 0) {
     const def = addresses.value.find(a => a.isDefault === 1)
     selectedAddressId.value = def ? def.id : addresses.value[0].id
@@ -66,7 +66,7 @@ async function submitOrder() {
     }
     ElMessage.success('下单成功')
     router.push('/orders')
-  } catch {}
+  } catch { ElMessage.error('下单失败') }
 }
 </script>
 

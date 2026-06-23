@@ -152,13 +152,13 @@ onMounted(async () => {
   try {
     const res = await getCategoryTree()
     categories.value = res.data
-  } catch {}
+  } catch { ElMessage.error('加载分类失败') }
   if (isEdit.value) {
     try {
       const res = await getProduct(route.params.id)
       Object.assign(form.value, res.data)
       if (res.data.skus) skus.value = res.data.skus
-    } catch {}
+    } catch { ElMessage.error('加载商品失败') }
   }
 })
 
@@ -173,7 +173,7 @@ async function handleSubmit() {
     }
     ElMessage.success('保存成功')
     router.push('/product')
-  } catch {}
+  } catch { ElMessage.error('保存失败') }
   finally { submitting.value = false }
 }
 </script>

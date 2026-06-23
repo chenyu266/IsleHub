@@ -30,13 +30,14 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
 import { getCart, updateQuantity, removeFromCart } from '../api/cart'
 
 const items = ref([])
 
 onMounted(fetchCart)
 async function fetchCart() {
-  try { items.value = ((await getCart()).data || []).map(i => ({ ...i, checked: true })) } catch {}
+  try { items.value = ((await getCart()).data || []).map(i => ({ ...i, checked: true })) } catch { ElMessage.error('加载购物车失败') }
 }
 
 const total = computed(() => items.value.filter(i => i.checked).reduce((s, i) => s + i.price * i.quantity, 0))
@@ -47,14 +48,14 @@ async function changeQty(item, delta) {
   try {
     await updateQuantity(item.skuId, newQty)
     item.quantity = newQty
-  } catch {}
+  } catch { ElMessage.error('更新数量失败') }
 }
 
 async function removeItem(item) {
   try {
     await removeFromCart(item.skuId)
     items.value = items.value.filter(i => i.skuId !== item.skuId)
-  } catch {}
+  } catch { ElMessage.error('删除失败') }
 }
 </script>
 

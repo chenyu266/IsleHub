@@ -1,7 +1,6 @@
 package com.islehub.shop.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.islehub.common.exception.BizException;
@@ -15,6 +14,8 @@ import com.islehub.product.entity.ProductSku;
 import com.islehub.product.mapper.ProductSkuMapper;
 import com.islehub.shop.entity.Address;
 import com.islehub.shop.mapper.AddressMapper;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
@@ -22,9 +23,9 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class ShopOrderService extends ServiceImpl<OrderMapper, Order> {
 
     private final OrderItemMapper itemMapper;
@@ -32,16 +33,6 @@ public class ShopOrderService extends ServiceImpl<OrderMapper, Order> {
     private final CartService cartService;
     private final ProductSkuMapper skuMapper;
     private final AddressMapper addressMapper;
-
-    public ShopOrderService(OrderMapper orderMapper, OrderItemMapper itemMapper,
-                            OrderShippingMapper shippingMapper, CartService cartService,
-                            ProductSkuMapper skuMapper, AddressMapper addressMapper) {
-        this.itemMapper = itemMapper;
-        this.shippingMapper = shippingMapper;
-        this.cartService = cartService;
-        this.skuMapper = skuMapper;
-        this.addressMapper = addressMapper;
-    }
 
     @Transactional
     public CheckoutResult checkout(Long userId, Long addressId, String remark) {
@@ -79,11 +70,7 @@ public class ShopOrderService extends ServiceImpl<OrderMapper, Order> {
                 warnings.add(ci.getProductName() + " 价格已变动：加购时 ¥" + ci.getPrice()
                         + "，现价 ¥" + sku.getPrice());
             }
-            boolean deducted = skuMapper.update(null,
-                    new LambdaUpdateWrapper<ProductSku>()
-                            .setSql("stock = stock - " + ci.getQuantity())
-                            .eq(ProductSku::getId, ci.getSkuId())
-                            .ge(ProductSku::getStock, ci.getQuantity())) > 0;
+            boolean deducted = skuMapper.deductStock(ci.getSkuId(), ci.getQuantity()) > 0;
             if (!deducted) {
                 throw new BizException("商品 " + ci.getProductName() + " 库存不足");
             }
@@ -143,10 +130,7 @@ public class ShopOrderService extends ServiceImpl<OrderMapper, Order> {
         List<OrderItem> items = itemMapper.selectList(
                 new LambdaQueryWrapper<OrderItem>().eq(OrderItem::getOrderId, id));
         for (OrderItem item : items) {
-            skuMapper.update(null,
-                    new LambdaUpdateWrapper<ProductSku>()
-                            .setSql("stock = stock + " + item.getQuantity())
-                            .eq(ProductSku::getId, item.getSkuId()));
+            skuMapper.addStock(item.getSkuId(), item.getQuantity());
         }
     }
 
@@ -168,6 +152,7 @@ public class ShopOrderService extends ServiceImpl<OrderMapper, Order> {
         }
     }
 
+    @Getter
     public static class CheckoutResult {
         private final Order order;
         private final List<String> warnings;
@@ -176,8 +161,5 @@ public class ShopOrderService extends ServiceImpl<OrderMapper, Order> {
             this.order = order;
             this.warnings = warnings;
         }
-
-        public Order getOrder() { return order; }
-        public List<String> getWarnings() { return warnings; }
     }
 }

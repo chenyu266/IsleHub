@@ -53,7 +53,7 @@ const selectedSku = ref(null)
 const quantity = ref(1)
 
 onMounted(async () => {
-  try { product.value = (await getProduct(route.params.id)).data } catch {}
+  try { product.value = (await getProduct(route.params.id)).data } catch { ElMessage.error('加载商品失败') }
 })
 
 function onSkuSelect(sku) { selectedSku.value = sku }
@@ -63,7 +63,7 @@ async function doAddToCart() {
   try {
     await addToCartApi({ skuId: selectedSku.value.id, quantity: quantity.value })
     ElMessage.success('已加入购物车')
-  } catch {}
+  } catch { ElMessage.error('加入购物车失败') }
 }
 
 async function addToCart() { await doAddToCart() }

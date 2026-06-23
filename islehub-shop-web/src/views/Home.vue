@@ -20,6 +20,7 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { pageProducts, getCategoryTree } from '../api/product'
 import ProductCard from '../components/ProductCard.vue'
 
@@ -32,7 +33,7 @@ const total = ref(0)
 const pageSize = 20
 
 onMounted(async () => {
-  try { categories.value = (await getCategoryTree()).data } catch {}
+  try { categories.value = (await getCategoryTree()).data } catch { ElMessage.error('加载分类失败') }
   fetchProducts()
 })
 
@@ -47,7 +48,7 @@ async function fetchProducts() {
     const res = await pageProducts(params)
     products.value = res.data.records
     total.value = res.data.total
-  } catch {}
+  } catch { ElMessage.error('加载商品失败') }
 }
 </script>
 

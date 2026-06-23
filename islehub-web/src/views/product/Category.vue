@@ -84,7 +84,7 @@ async function handleSubmit() {
     ElMessage.success('保存成功')
     dialogVisible.value = false
     fetchData()
-  } catch {}
+  } catch { ElMessage.error('保存失败') }
 }
 
 async function handleDelete(id) {

@@ -89,7 +89,7 @@ onMounted(async () => {
   try {
     const res = await getCategoryTree()
     flatCategories.value = flattenTree(res.data)
-  } catch {}
+  } catch { ElMessage.error('加载分类失败') }
   fetchData()
 })
 

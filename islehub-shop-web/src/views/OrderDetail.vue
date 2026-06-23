@@ -49,10 +49,14 @@ onMounted(async () => {
 async function handleCancel() {
   try {
     await ElMessageBox.confirm('确定取消订单？', '确认')
+  } catch {
+    return // 用户取消
+  }
+  try {
     await cancelOrder(order.value.id)
     ElMessage.success('已取消')
     order.value.status = 'cancelled'
-  } catch {}
+  } catch { ElMessage.error('取消失败') }
 }
 
 async function handleConfirm() {
@@ -60,7 +64,7 @@ async function handleConfirm() {
     await confirmOrder(order.value.id)
     ElMessage.success('已确认收货')
     order.value = (await getOrder(order.value.id)).data
-  } catch {}
+  } catch { ElMessage.error('确认失败') }
 }
 </script>
 

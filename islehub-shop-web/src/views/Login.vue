@@ -27,7 +27,7 @@ async function handleLogin() {
     localStorage.setItem('shop-token', res.data)
     ElMessage.success('登录成功')
     router.push('/')
-  } catch {}
+  } catch { ElMessage.error('登录失败') }
 }
 </script>
 

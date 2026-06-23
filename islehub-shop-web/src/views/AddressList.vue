@@ -48,7 +48,7 @@ const form = reactive({ receiverName: '', receiverPhone: '', province: '', city:
 
 onMounted(fetchAddresses)
 async function fetchAddresses() {
-  try { addresses.value = (await getAddresses()).data || [] } catch {}
+  try { addresses.value = (await getAddresses()).data || [] } catch { ElMessage.error('加载地址失败') }
 }
 
 function openDialog(addr) {
@@ -73,7 +73,7 @@ async function handleSave() {
     dialogVisible.value = false
     await fetchAddresses()
     ElMessage.success('保存成功')
-  } catch {}
+  } catch { ElMessage.error('保存失败') }
 }
 
 async function handleDelete(id) {
@@ -81,7 +81,7 @@ async function handleDelete(id) {
     await deleteAddress(id)
     await fetchAddresses()
     ElMessage.success('已删除')
-  } catch {}
+  } catch { ElMessage.error('删除失败') }
 }
 </script>
 

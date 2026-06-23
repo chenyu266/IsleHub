@@ -6,6 +6,10 @@ import com.islehub.common.exception.BizException;
 import com.islehub.product.entity.ProductSku;
 import com.islehub.product.mapper.ProductMapper;
 import com.islehub.product.mapper.ProductSkuMapper;
+import lombok.Data;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
@@ -16,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 
 @Service
+@RequiredArgsConstructor
 public class CartService {
 
     private final StringRedisTemplate redisTemplate;
@@ -51,13 +56,6 @@ public class CartService {
             "  return 1; " +
             "end; " +
             "return 0;");
-    }
-
-    public CartService(StringRedisTemplate redisTemplate, ProductSkuMapper skuMapper,
-                       ProductMapper productMapper) {
-        this.redisTemplate = redisTemplate;
-        this.skuMapper = skuMapper;
-        this.productMapper = productMapper;
     }
 
     private String key(Long userId) {
@@ -183,6 +181,7 @@ public class CartService {
         redisTemplate.delete(key(userId));
     }
 
+    @Data
     public static class CartItem {
         private Long skuId;
         private Long productId;
@@ -192,20 +191,5 @@ public class CartService {
         private Integer quantity;
         @com.fasterxml.jackson.annotation.JsonIgnore
         private Long version;
-
-        public Long getSkuId() { return skuId; }
-        public void setSkuId(Long skuId) { this.skuId = skuId; }
-        public Long getProductId() { return productId; }
-        public void setProductId(Long productId) { this.productId = productId; }
-        public String getProductName() { return productName; }
-        public void setProductName(String productName) { this.productName = productName; }
-        public String getSkuSpec() { return skuSpec; }
-        public void setSkuSpec(String skuSpec) { this.skuSpec = skuSpec; }
-        public BigDecimal getPrice() { return price; }
-        public void setPrice(BigDecimal price) { this.price = price; }
-        public Integer getQuantity() { return quantity; }
-        public void setQuantity(Integer quantity) { this.quantity = quantity; }
-        public Long getVersion() { return version; }
-        public void setVersion(Long version) { this.version = version; }
     }
 }

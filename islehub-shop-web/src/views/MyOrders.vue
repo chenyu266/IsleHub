@@ -50,7 +50,7 @@ async function fetchOrders() {
     const res = await pageOrders(params)
     orders.value = res.data.records
     total.value = res.data.total
-  } catch {}
+  } catch { ElMessage.error('加载订单失败') }
 }
 
 function statusText(status) {
@@ -60,10 +60,14 @@ function statusText(status) {
 async function doConfirm(id) {
   try {
     await ElMessageBox.confirm('确认已收到商品？', '确认收货', { type: 'success' })
+  } catch {
+    return // 用户取消
+  }
+  try {
     await confirmOrder(id)
     ElMessage.success('已确认收货')
     fetchOrders()
-  } catch {}
+  } catch { ElMessage.error('确认失败') }
 }
 </script>
 
