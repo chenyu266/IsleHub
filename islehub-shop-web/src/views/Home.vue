@@ -9,6 +9,10 @@
     <div class="product-grid">
       <ProductCard v-for="p in products" :key="p.id" :product="p" />
     </div>
+    <div class="empty-state" v-if="!products.length">
+      <p>没有找到相关商品</p>
+      <router-link to="/">返回首页</router-link>
+    </div>
     <div class="pagination" v-if="total > pageSize">
       <el-pagination background layout="prev, pager, next"
         :total="total" :page-size="pageSize" v-model:current-page="pageNum"
@@ -57,5 +61,8 @@ async function fetchProducts() {
 .category-tabs span { cursor: pointer; color: #666; font-size: 14px; padding: 4px 0; }
 .category-tabs span.active { color: #409eff; font-weight: bold; border-bottom: 2px solid #409eff; }
 .product-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.empty-state {text-align: center;padding: 60px 0;color: #999;}
+.empty-state p {font-size: 16px;margin-bottom: 12px;}
+.empty-state a {color: #409eff;text-decoration: none;}
 .pagination { display: flex; justify-content: center; margin-top: 30px; }
 </style>

@@ -47,6 +47,8 @@ onMounted(async () => {
 function search() {
   if (keyword.value.trim()) {
     router.push({ path: '/', query: { keyword: keyword.value } })
+  } else {
+    router.push('/')
   }
 }
 

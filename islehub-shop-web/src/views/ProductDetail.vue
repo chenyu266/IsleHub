@@ -59,6 +59,11 @@ onMounted(async () => {
 function onSkuSelect(sku) { selectedSku.value = sku }
 
 async function doAddToCart() {
+  if (!localStorage.getItem('shop-token')) {
+    ElMessage.warning('请先登录后再操作')
+    router.push('/login')
+    return
+  }
   if (!selectedSku.value) { ElMessage.warning('请选择规格'); return }
   try {
     await addToCartApi({ skuId: selectedSku.value.id, quantity: quantity.value })
