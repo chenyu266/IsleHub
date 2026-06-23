@@ -34,3 +34,4 @@ sa-token:
   is-concurrent: true
   is-share: false
   token-style: random-128
+  jwt-secret-key: ${SA_TOKEN_JWT_SECRET:dev-placeholder-change-in-production}
