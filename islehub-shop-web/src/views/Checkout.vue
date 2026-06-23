@@ -16,6 +16,7 @@
     <div class="section">
       <div class="section-title">商品明细</div>
       <div class="order-item" v-for="item in cartItems" :key="item.skuId">
+        <img v-if="item.productImage" :src="item.productImage" class="order-item-img" alt="" />
         <span>{{ item.productName || '商品' }} / {{ item.skuSpec }} ×{{ item.quantity }}</span>
         <span>¥{{ (item.price * item.quantity).toFixed(2) }}</span>
       </div>
@@ -80,6 +81,7 @@ async function submitOrder() {
 .address-card.selected { border-color: #409eff; background: #ecf5ff; }
 .addr-detail { color: #999; font-size: 13px; margin-top: 4px; }
 .order-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+.order-item-img { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; }
 .checkout-footer { display: flex; justify-content: flex-end; align-items: center; gap: 20px; padding-top: 16px; border-top: 2px solid #eee; }
 .checkout-footer b { font-size: 22px; color: #e4393c; }
 .btn-submit { padding: 12px 32px; font-size: 16px; background: #e4393c; color: #fff; border: none; border-radius: 4px; cursor: pointer; }

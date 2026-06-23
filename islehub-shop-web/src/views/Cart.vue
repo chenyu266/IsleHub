@@ -6,6 +6,10 @@
       <div class="cart-list">
         <div class="cart-item" v-for="item in items" :key="item.skuId">
           <el-checkbox v-model="item.checked" />
+          <div class="item-image">
+            <img v-if="item.productImage" :src="item.productImage" alt="商品图片" />
+            <span v-else class="no-image">暂无图片</span>
+          </div>
           <div class="item-info">
             <div class="item-name">{{ item.productName || '商品' }}</div>
             <div class="item-spec">{{ item.skuSpec }}</div>
@@ -64,6 +68,9 @@ async function removeItem(item) {
 .cart-page h2 { margin-bottom: 20px; }
 .empty { text-align: center; color: #999; padding: 60px 0; }
 .cart-item { display: flex; align-items: center; gap: 16px; padding: 16px 0; border-bottom: 1px solid #eee; }
+.item-image { width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; background: #f5f7fa; border-radius: 4px; flex-shrink: 0; overflow: hidden; }
+.item-image img { width: 100%; height: 100%; object-fit: cover; }
+.no-image { color: #ccc; font-size: 12px; }
 .item-info { flex: 1; }
 .item-name { font-size: 14px; color: #333; }
 .item-spec { font-size: 12px; color: #999; margin-top: 4px; }

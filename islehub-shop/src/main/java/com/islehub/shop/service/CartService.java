@@ -98,6 +98,7 @@ public class CartService {
                 next.setSkuId(skuId);
                 next.setProductId(sku.getProductId());
                 next.setProductName(product != null ? product.getName() : "");
+                next.setProductImage(product != null ? product.getMainImage() : null);
                 next.setSkuSpec(sku.getSpec());
                 next.setPrice(sku.getPrice());
                 next.setQuantity(quantity);
@@ -108,6 +109,7 @@ public class CartService {
                 next.setSkuId(current.getSkuId());
                 next.setProductId(current.getProductId());
                 next.setProductName(product != null ? product.getName() : current.getProductName());
+                next.setProductImage(product != null ? product.getMainImage() : current.getProductImage());
                 next.setSkuSpec(sku.getSpec());
                 next.setPrice(current.getPrice());
                 next.setQuantity(current.getQuantity() + quantity);
@@ -140,6 +142,7 @@ public class CartService {
             next.setSkuId(current.getSkuId());
             next.setProductId(current.getProductId());
             next.setProductName(current.getProductName());
+            next.setProductImage(current.getProductImage());
             next.setSkuSpec(current.getSkuSpec());
             next.setPrice(current.getPrice());
             next.setQuantity(quantity);
@@ -186,6 +189,7 @@ public class CartService {
         private Long skuId;
         private Long productId;
         private String productName;
+        private String productImage;
         private String skuSpec;
         private BigDecimal price;
         private Integer quantity;
