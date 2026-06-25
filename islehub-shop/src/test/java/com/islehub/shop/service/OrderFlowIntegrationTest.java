@@ -42,6 +42,8 @@ class OrderFlowIntegrationTest {
     @Autowired private AddressMapper addressMapper;
 
     @MockBean private CartService cartService;
+    @MockBean private StockCacheService stockCacheService;
+    @MockBean private org.springframework.amqp.rabbit.core.RabbitTemplate rabbitTemplate;
 
     private Long userId = 1L;
     private Long skuId;
@@ -83,6 +85,7 @@ class OrderFlowIntegrationTest {
         cartItem.setPrice(new BigDecimal("99.00"));
         cartItem.setQuantity(3);
         when(cartService.list(userId)).thenReturn(List.of(cartItem));
+        doNothing().when(stockCacheService).tryDeduct(anyList(), anyList());
 
         ShopOrderService.CheckoutResult result = shopOrderService.checkout(userId, addressId, "请尽快发货");
 
@@ -93,9 +96,9 @@ class OrderFlowIntegrationTest {
         assertThat(order.getTotalAmount()).isEqualByComparingTo(new BigDecimal("297.00"));
         assertThat(order.getReceiverName()).isEqualTo("李四");
 
-        // 库存已扣减
+        // 库存不在此处扣减 — Redis 预扣已完成，DB 落库由 MQ 消费者异步处理
         ProductSku sku = skuMapper.selectById(skuId);
-        assertThat(sku.getStock()).isEqualTo(7);
+        assertThat(sku.getStock()).isEqualTo(10);
 
         // 订单项已创建
         List<OrderItem> items = itemMapper.selectList(null);
@@ -186,6 +189,8 @@ class OrderFlowIntegrationTest {
         cartItem.setPrice(new BigDecimal("99.00"));
         cartItem.setQuantity(100); // 超过库存 10
         when(cartService.list(userId)).thenReturn(List.of(cartItem));
+        doThrow(new com.islehub.common.exception.BizException("库存不足"))
+                .when(stockCacheService).tryDeduct(anyList(), anyList());
 
         assertThatThrownBy(() -> shopOrderService.checkout(userId, addressId, null))
                 .hasMessageContaining("库存不足");
@@ -204,6 +209,7 @@ class OrderFlowIntegrationTest {
         cartItem.setPrice(new BigDecimal("88.00")); // 加购价 88
         cartItem.setQuantity(1);
         when(cartService.list(userId)).thenReturn(List.of(cartItem));
+        doNothing().when(stockCacheService).tryDeduct(anyList(), anyList());
 
         ShopOrderService.CheckoutResult result = shopOrderService.checkout(userId, addressId, null);
 

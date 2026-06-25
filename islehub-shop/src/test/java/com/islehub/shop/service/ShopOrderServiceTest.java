@@ -13,6 +13,7 @@ import com.islehub.product.mapper.ProductSkuMapper;
 import com.islehub.shop.entity.Address;
 import com.islehub.shop.mapper.AddressMapper;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -51,6 +52,8 @@ class ShopOrderServiceTest {
     @Mock CartService cartService;
     @Mock ProductSkuMapper skuMapper;
     @Mock AddressMapper addressMapper;
+    @Mock StockCacheService stockCacheService;
+    @Mock RabbitTemplate rabbitTemplate;
 
     private ShopOrderService service;
 
@@ -67,7 +70,8 @@ class ShopOrderServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new ShopOrderService(itemMapper, shippingMapper, cartService, skuMapper, addressMapper);
+        service = new ShopOrderService(itemMapper, shippingMapper, cartService, skuMapper, addressMapper,
+                stockCacheService, rabbitTemplate);
         ReflectionTestUtils.setField(service, "baseMapper", orderMapper);
 
         address = new Address();
@@ -116,7 +120,7 @@ class ShopOrderServiceTest {
             when(cartService.list(userId)).thenReturn(List.of(cartItem));
             when(addressMapper.selectById(addressId)).thenReturn(address);
             when(skuMapper.selectById(skuId)).thenReturn(sku);
-            when(skuMapper.deductStock(eq(skuId), anyInt())).thenReturn(1);
+            doNothing().when(stockCacheService).tryDeduct(anyList(), anyList());
             when(orderMapper.insert(any(Order.class))).thenAnswer(inv -> {
                 Order o = inv.getArgument(0);
                 o.setId(orderId);
@@ -179,8 +183,7 @@ class ShopOrderServiceTest {
         void shouldThrowWhenStockInsufficient() {
             when(cartService.list(userId)).thenReturn(List.of(cartItem));
             when(addressMapper.selectById(addressId)).thenReturn(address);
-            when(skuMapper.selectById(skuId)).thenReturn(sku);
-            when(skuMapper.deductStock(eq(skuId), anyInt())).thenReturn(0);
+            doThrow(new BizException("库存不足")).when(stockCacheService).tryDeduct(anyList(), anyList());
 
             assertThatThrownBy(() -> service.checkout(userId, addressId, null))
                     .isInstanceOf(BizException.class)
@@ -201,7 +204,7 @@ class ShopOrderServiceTest {
             when(cartService.list(userId)).thenReturn(List.of(staleItem));
             when(addressMapper.selectById(addressId)).thenReturn(address);
             when(skuMapper.selectById(skuId)).thenReturn(sku); // 现价 99.00
-            when(skuMapper.deductStock(eq(skuId), anyInt())).thenReturn(1);
+            doNothing().when(stockCacheService).tryDeduct(anyList(), anyList());
             when(orderMapper.insert(any(Order.class))).thenAnswer(inv -> {
                 Order o = inv.getArgument(0);
                 o.setId(orderId);
