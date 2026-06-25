@@ -1,7 +1,9 @@
 <template>
   <header class="shop-header">
     <div class="header-left">
-      <router-link to="/" class="logo">IsleHub 商城</router-link>
+      <span class="logo" @click="goHome">IsleHub 商城</span>
+    </div>
+    <div class="header-center">
       <div class="search-bar">
         <input v-model="keyword" placeholder="搜索商品..." @keyup.enter="search" />
         <button @click="search">搜索</button>
@@ -11,7 +13,7 @@
       <template v-if="user">
         <router-link to="/cart" class="cart-btn">🛒 购物车</router-link>
         <el-dropdown>
-          <span class="user-name">{{ user.realName || user.username }}</span>
+          <span class="user-name">{{user.username }}</span>
           <template #dropdown>
             <el-dropdown-menu>
               <el-dropdown-item @click="$router.push('/orders')">我的订单</el-dropdown-item>
@@ -31,10 +33,11 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { getInfo } from '../api/auth'
 
 const router = useRouter()
+const route = useRoute()
 const user = ref(null)
 const keyword = ref('')
 
@@ -43,6 +46,14 @@ onMounted(async () => {
     try { user.value = (await getInfo()).data } catch {}
   }
 })
+
+function goHome() {
+  if (route.path === '/') {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  } else {
+    router.push('/')
+  }
+}
 
 function search() {
   if (keyword.value.trim()) {
@@ -55,6 +66,7 @@ function search() {
 function logout() {
   localStorage.removeItem('shop-token')
   user.value = null
+  window.dispatchEvent(new Event('app-user-logout'))
   router.push('/')
 }
 </script>
@@ -65,14 +77,17 @@ function logout() {
   padding: 0 40px; height: 60px; background: #fff;
   box-shadow: 0 2px 8px rgba(0,0,0,0.06); position: sticky; top: 0; z-index: 100;
 }
-.header-left { display: flex; align-items: center; gap: 40px; }
-.logo { font-size: 20px; font-weight: bold; color: #409eff; text-decoration: none; }
-.search-bar { display: flex; }
-.search-bar input { width: 240px; padding: 8px 12px; border: 1px solid #dcdfe6; border-radius: 4px 0 0 4px; outline: none; }
+.header-left { display: flex; align-items: center; width: 200px; flex-shrink: 0; }
+.header-center { flex: 1; display: flex; justify-content: center; }
+.header-right { display: flex; align-items: center; gap: 20px; width: 200px; flex-shrink: 0; justify-content: flex-end; }
+.logo { font-size: 22px; font-weight: bold; color: #409eff; cursor: pointer; letter-spacing: 1px; }
+.logo:hover { opacity: 0.75; }
+.search-bar { display: flex; user-select: none; width: 100%; max-width: 480px; }
+.search-bar input { flex: 1; min-width: 0; padding: 8px 12px; border: 1px solid #dcdfe6; border-radius: 4px 0 0 4px; outline: none; }
 .search-bar button { padding: 8px 16px; background: #409eff; color: #fff; border: none; border-radius: 0 4px 4px 0; cursor: pointer; }
 .header-right { display: flex; align-items: center; gap: 20px; }
-.cart-btn { text-decoration: none; color: #333; font-size: 14px; }
+.cart-btn { text-decoration: none; color: #333; font-size: 14px; user-select: none;}
 .login-link { text-decoration: none; color: #409eff; }
 .register-btn { padding: 6px 16px; background: #409eff; color: #fff; border-radius: 4px; text-decoration: none; font-size: 14px; }
-.user-name { cursor: pointer; color: #409eff; }
+.user-name { cursor: pointer; color: #409eff; user-select: none;}
 </style>

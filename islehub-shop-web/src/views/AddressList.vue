@@ -136,6 +136,7 @@ async function handleSetDefault(addr) {
 .address-card:hover {
   border-color: #c6e2ff;
   background: #fafcff;
+  user-select: none;
 }
 .address-card.is-selected {
   border-color: #409eff;

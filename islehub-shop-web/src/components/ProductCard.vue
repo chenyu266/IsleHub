@@ -6,7 +6,7 @@
     </div>
     <div class="card-info">
       <div class="card-name">{{ product.name }}</div>
-      <div class="card-price">¥{{ product.skus && product.skus.length > 0 ? product.skus[0].price : '--' }}</div>
+      <div class="card-price">¥{{ product.skus && product.skus.length > 0 ? (Math.min(...product.skus.map(s => Number(s.price || 0))).toFixed(2)) : '--' }}</div>
     </div>
   </div>
 </template>
@@ -16,7 +16,7 @@ defineProps({ product: Object })
 </script>
 
 <style scoped>
-.product-card { background: #fff; border-radius: 8px; overflow: hidden; cursor: pointer; transition: all 0.3s; }
+.product-card { background: #fff; border-radius: 8px; overflow: hidden; cursor: pointer; transition: all 0.3s; user-select: none;}
 .product-card:hover { transform: translateY(-4px); box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
 .card-image { height: 200px; display: flex; align-items: center; justify-content: center; background: #f5f7fa; }
 .card-image img { width: 100%; height: 100%; object-fit: cover; }

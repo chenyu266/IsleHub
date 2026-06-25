@@ -80,7 +80,7 @@ async function buyNow() {
 </script>
 
 <style scoped>
-.product-detail { display: flex; gap: 40px; background: #fff; padding: 30px; border-radius: 8px; }
+.product-detail { display: flex; gap: 40px; background: #fff; padding: 30px; border-radius: 8px; user-select: none;}
 .detail-image { width: 420px; height: 420px; display: flex; align-items: center; justify-content: center; background: #f5f7fa; border-radius: 8px; }
 .detail-image img { max-width: 100%; max-height: 100%; object-fit: contain; }
 .no-image { color: #ccc; font-size: 16px; }

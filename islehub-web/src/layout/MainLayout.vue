@@ -90,7 +90,7 @@ onMounted(fetchInfo)
 </script>
 
 <style scoped>
-.layout { height: 100vh; }
+.layout { height: 100vh; user-select: none;}
 .header { display: flex; align-items: center; justify-content: space-between; background: #fff; border-bottom: 1px solid #e4e7ed; padding: 0 20px; }
 .header-left { display: flex; align-items: center; }
 .header-left h2 { margin-right: 30px; color: #409eff; font-size: 20px; }
