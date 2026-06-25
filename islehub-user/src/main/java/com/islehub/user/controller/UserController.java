@@ -4,7 +4,6 @@ import cn.dev33.satoken.annotation.SaCheckRole;
 import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.islehub.common.result.R;
-import com.islehub.user.dto.LoginDTO;
 import com.islehub.user.entity.User;
 import com.islehub.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -24,8 +23,8 @@ public class UserController {
 
     @Operation(summary = "登录")
     @PostMapping("/login")
-    public R<String> login(@RequestBody LoginDTO dto) {
-        String token = userService.login(dto.getUsername(), dto.getPassword());
+    public R<String> login(@RequestBody User user) {
+        String token = userService.login(user.getUsername(), user.getPassword());
         return R.ok(token);
     }
 

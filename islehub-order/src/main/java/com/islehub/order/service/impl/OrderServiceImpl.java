@@ -11,6 +11,7 @@ import com.islehub.order.mapper.OrderItemMapper;
 import com.islehub.order.mapper.OrderMapper;
 import com.islehub.order.mapper.OrderShippingMapper;
 import com.islehub.order.service.OrderService;
+import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -26,6 +27,7 @@ import java.util.Set;
 import java.util.UUID;
 
 @Service
+@RequiredArgsConstructor
 public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements OrderService {
 
     private static final Map<String, Set<String>> ALLOWED_TRANSITIONS = Map.of(
@@ -37,11 +39,6 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
 
     private final OrderItemMapper itemMapper;
     private final OrderShippingMapper shippingMapper;
-
-    public OrderServiceImpl(OrderItemMapper itemMapper, OrderShippingMapper shippingMapper) {
-        this.itemMapper = itemMapper;
-        this.shippingMapper = shippingMapper;
-    }
 
     @Override
     public Page<Order> pageOrders(int page, int pageSize, String orderNo, String status,
@@ -114,9 +111,11 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
 
     @Override
     public List<Order> exportOrders(String orderNo, String status, String startDate, String endDate) {
-        return baseMapper.selectForExport(orderNo, status,
+        return baseMapper.pageOrders(new Page<>(1, Integer.MAX_VALUE),
+                orderNo, status,
                 StringUtils.hasText(startDate) ? startDate + " 00:00:00" : null,
-                StringUtils.hasText(endDate) ? endDate + " 23:59:59" : null);
+                StringUtils.hasText(endDate) ? endDate + " 23:59:59" : null)
+                .getRecords();
     }
 
     @Override

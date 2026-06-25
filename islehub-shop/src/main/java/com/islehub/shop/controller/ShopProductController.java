@@ -4,17 +4,15 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.islehub.common.result.R;
 import com.islehub.product.entity.Product;
 import com.islehub.product.service.ProductService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+@RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/shop/product")
 public class ShopProductController {
 
     private final ProductService productService;
-
-    public ShopProductController(ProductService productService) {
-        this.productService = productService;
-    }
 
     @GetMapping("/page")
     public R<R.PageResult<Product>> page(

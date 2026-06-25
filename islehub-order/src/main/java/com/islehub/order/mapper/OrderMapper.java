@@ -6,8 +6,6 @@ import com.islehub.order.entity.Order;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
-import java.util.List;
-
 @Mapper
 public interface OrderMapper extends BaseMapper<Order> {
 
@@ -16,11 +14,6 @@ public interface OrderMapper extends BaseMapper<Order> {
                            @Param("status") String status,
                            @Param("startDate") String startDate,
                            @Param("endDate") String endDate);
-
-    List<Order> selectForExport(@Param("orderNo") String orderNo,
-                                @Param("status") String status,
-                                @Param("startDate") String startDate,
-                                @Param("endDate") String endDate);
 
     Order selectDetailById(@Param("id") Long id);
 }

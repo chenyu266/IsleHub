@@ -4,31 +4,28 @@ import cn.dev33.satoken.annotation.SaCheckRole;
 import cn.dev33.satoken.annotation.SaMode;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.islehub.common.result.R;
+import com.islehub.order.dto.OrderCreateDTO;
+import com.islehub.order.dto.StatusDTO;
 import com.islehub.order.entity.Order;
-import com.islehub.order.entity.OrderItem;
 import com.islehub.order.entity.OrderShipping;
 import com.islehub.order.service.OrderService;
+import lombok.RequiredArgsConstructor;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import java.util.List;
 
 @SaCheckRole(value = {"admin", "operator"}, mode = SaMode.OR)
 @Tag(name = "管理-订单", description = "订单CRUD、状态流转、导出")
+@RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/order")
 public class OrderController {
 
     private final OrderService orderService;
-
-    public OrderController(OrderService orderService) {
-        this.orderService = orderService;
-    }
 
     @Operation(summary = "分页查询订单")
     @GetMapping("/page")
@@ -93,19 +90,5 @@ public class OrderController {
                 .header(HttpHeaders.CONTENT_TYPE, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=orders.xlsx")
                 .body(excelBytes);
-    }
-
-    public static class OrderCreateDTO {
-        private Order order;
-        private List<OrderItem> items;
-        public Order getOrder() { return order; }
-        public void setOrder(Order order) { this.order = order; }
-        public List<OrderItem> getItems() { return items; }
-        public void setItems(List<OrderItem> items) { this.items = items; }
-    }
-    public static class StatusDTO {
-        private String status;
-        public String getStatus() { return status; }
-        public void setStatus(String status) { this.status = status; }
     }
 }

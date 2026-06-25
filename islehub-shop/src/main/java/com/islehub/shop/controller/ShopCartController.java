@@ -3,6 +3,7 @@ package com.islehub.shop.controller;
 import cn.dev33.satoken.stp.StpUtil;
 import com.islehub.common.result.R;
 import com.islehub.shop.service.CartService;
+import lombok.RequiredArgsConstructor;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -11,15 +12,12 @@ import java.util.List;
 import java.util.Map;
 
 @Tag(name = "商城-购物车", description = "购物车增删改查")
+@RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/shop/cart")
 public class ShopCartController {
 
     private final CartService cartService;
-
-    public ShopCartController(CartService cartService) {
-        this.cartService = cartService;
-    }
 
     private Long userId() {
         return StpUtil.getLoginIdAsLong();

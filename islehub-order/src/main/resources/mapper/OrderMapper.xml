@@ -37,14 +37,6 @@
         ORDER BY o.created_at DESC
     </select>
 
-    <select id="selectForExport" resultType="com.islehub.order.entity.Order">
-        SELECT * FROM order_table o
-        <where>
-            <include refid="orderWhere"/>
-        </where>
-        ORDER BY o.created_at DESC
-    </select>
-
     <select id="selectDetailById" resultMap="OrderDetailMap">
         SELECT o.*,
                oi.id           AS oi_id,

@@ -4,6 +4,7 @@ import cn.dev33.satoken.stp.StpUtil;
 import com.islehub.common.result.R;
 import com.islehub.shop.entity.Address;
 import com.islehub.shop.service.AddressService;
+import lombok.RequiredArgsConstructor;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -12,15 +13,12 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @Tag(name = "商城-地址", description = "收货地址增删改查")
+@RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/shop/address")
 public class ShopAddressController {
 
     private final AddressService addressService;
-
-    public ShopAddressController(AddressService addressService) {
-        this.addressService = addressService;
-    }
 
     private Long userId() {
         return StpUtil.getLoginIdAsLong();

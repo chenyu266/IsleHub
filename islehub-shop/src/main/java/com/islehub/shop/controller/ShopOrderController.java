@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.islehub.common.result.R;
 import com.islehub.order.entity.Order;
 import com.islehub.shop.service.ShopOrderService;
+import lombok.RequiredArgsConstructor;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -12,15 +13,12 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @Tag(name = "商城-订单", description = "C端订单：下单、查单、取消、确认收货")
+@RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/shop/order")
 public class ShopOrderController {
 
     private final ShopOrderService shopOrderService;
-
-    public ShopOrderController(ShopOrderService shopOrderService) {
-        this.shopOrderService = shopOrderService;
-    }
 
     private Long userId() {
         return StpUtil.getLoginIdAsLong();

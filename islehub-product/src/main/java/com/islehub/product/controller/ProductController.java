@@ -4,27 +4,25 @@ import cn.dev33.satoken.annotation.SaCheckRole;
 import cn.dev33.satoken.annotation.SaMode;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.islehub.common.result.R;
+import com.islehub.product.dto.BatchStatusDTO;
+import com.islehub.product.dto.ProductAddDTO;
 import com.islehub.product.entity.Product;
-import com.islehub.product.entity.ProductSku;
 import com.islehub.product.service.ProductService;
+import lombok.RequiredArgsConstructor;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
-import java.util.List;
 
 @SaCheckRole(value = {"admin", "operator"}, mode = SaMode.OR)
 @Tag(name = "管理-商品", description = "商品CRUD、上下架、批量操作")
+@RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/product")
 public class ProductController {
 
     private final ProductService productService;
-
-    public ProductController(ProductService productService) {
-        this.productService = productService;
-    }
 
     @Operation(summary = "分页查询商品")
     @GetMapping("/page")
@@ -80,23 +78,5 @@ public class ProductController {
     public R<Void> batchUpdateStatus(@Valid @RequestBody BatchStatusDTO dto) {
         productService.batchUpdateStatus(dto.getIds(), dto.getStatus());
         return R.ok();
-    }
-
-    // Inner DTOs — must be public static for Jackson deserialization
-    public static class ProductAddDTO {
-        private Product product;
-        private List<ProductSku> skus;
-        public Product getProduct() { return product; }
-        public void setProduct(Product product) { this.product = product; }
-        public List<ProductSku> getSkus() { return skus; }
-        public void setSkus(List<ProductSku> skus) { this.skus = skus; }
-    }
-    public static class BatchStatusDTO {
-        private List<Long> ids;
-        private Integer status;
-        public List<Long> getIds() { return ids; }
-        public void setIds(List<Long> ids) { this.ids = ids; }
-        public Integer getStatus() { return status; }
-        public void setStatus(Integer status) { this.status = status; }
     }
 }

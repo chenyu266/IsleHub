@@ -5,6 +5,7 @@ import cn.dev33.satoken.annotation.SaMode;
 import com.islehub.common.result.R;
 import com.islehub.product.entity.Category;
 import com.islehub.product.service.CategoryService;
+import lombok.RequiredArgsConstructor;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -14,15 +15,12 @@ import java.util.List;
 
 @SaCheckRole(value = {"admin", "operator"}, mode = SaMode.OR)
 @Tag(name = "管理-分类", description = "商品分类树、CRUD")
+@RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/category")
 public class CategoryController {
 
     private final CategoryService categoryService;
-
-    public CategoryController(CategoryService categoryService) {
-        this.categoryService = categoryService;
-    }
 
     @Operation(summary = "获取分类树")
     @GetMapping("/tree")
