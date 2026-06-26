@@ -5,5 +5,8 @@ import userRequest from './userRequest'
 export const login = (data) => userRequest.post('/login', data)
 export const getInfo = () => userRequest.get('/info')
 
-// 注册 → 商城专属逻辑（设置 role=customer）
-export const register = (data) => request.post('/auth/register', data)
+// 注册 → 复用 /api/user/register 接口
+export const register = (data) => userRequest.post('/register', data)
+
+// 发送邮箱验证码
+export const sendEmailCode = (email) => userRequest.post('/send-email-code', null, { params: { email } })

@@ -3,7 +3,7 @@ package com.islehub.product.controller;
 import cn.dev33.satoken.annotation.SaCheckRole;
 import cn.dev33.satoken.annotation.SaMode;
 import com.islehub.common.enums.RCode;
-import com.islehub.common.result.R;
+import com.islehub.common.result.Result;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Value;
@@ -31,14 +31,14 @@ public class UploadController {
     @SaCheckRole(value = {"admin", "operator"}, mode = SaMode.OR)
     @Operation(summary = "上传图片")
     @PostMapping("/image")
-    public R<String> uploadImage(@RequestParam("file") MultipartFile file) throws IOException {
+    public Result<String> uploadImage(@RequestParam("file") MultipartFile file) throws IOException {
         if (file.isEmpty()) {
-            return R.fail(RCode.BAD_REQUEST, "文件不能为空");
+            return Result.fail(RCode.BAD_REQUEST, "文件不能为空");
         }
 
         String contentType = file.getContentType();
         if (contentType == null || !contentType.startsWith("image/")) {
-            return R.fail(RCode.BAD_REQUEST, "只允许上传图片文件");
+            return Result.fail(RCode.BAD_REQUEST, "只允许上传图片文件");
         }
 
         File baseDir = new File(uploadPath);
@@ -53,7 +53,7 @@ public class UploadController {
         String originalName = file.getOriginalFilename();
         String ext = extractExt(originalName);
         if (!ALLOWED_IMAGE_EXTS.contains(ext.toLowerCase())) {
-            return R.fail(RCode.BAD_REQUEST, "不支持的文件类型，仅允许 " + String.join(",", ALLOWED_IMAGE_EXTS));
+            return Result.fail(RCode.BAD_REQUEST, "不支持的文件类型，仅允许 " + String.join(",", ALLOWED_IMAGE_EXTS));
         }
         String filename = UUID.randomUUID().toString() + "." + ext;
 
@@ -61,7 +61,7 @@ public class UploadController {
         Files.copy(file.getInputStream(), targetPath);
 
         String url = "/uploads/products/" + filename;
-        return R.ok(url);
+        return Result.ok(url);
     }
 
     private static String extractExt(String filename) {

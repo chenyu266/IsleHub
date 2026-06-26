@@ -3,7 +3,7 @@ package com.islehub.product.controller;
 import cn.dev33.satoken.annotation.SaCheckRole;
 import cn.dev33.satoken.annotation.SaMode;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.islehub.common.result.R;
+import com.islehub.common.result.Result;
 import com.islehub.product.dto.BatchStatusDTO;
 import com.islehub.product.dto.ProductAddDTO;
 import com.islehub.product.entity.Product;
@@ -26,57 +26,57 @@ public class ProductController {
 
     @Operation(summary = "分页查询商品")
     @GetMapping("/page")
-    public R<R.PageResult<Product>> page(
+    public Result<Result.PageResult<Product>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int pageSize,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) Integer status) {
         Page<Product> result = productService.pageProducts(page, pageSize, keyword, categoryId, status);
-        return R.page(result.getRecords(), result.getTotal(), (long) page, (long) pageSize);
+        return Result.page(result.getRecords(), result.getTotal(), (long) page, (long) pageSize);
     }
 
     @Operation(summary = "商品详情")
     @GetMapping("/{id}")
-    public R<Product> detail(@Parameter(description = "商品ID") @PathVariable Long id) {
-        return R.ok(productService.getDetail(id));
+    public Result<Product> detail(@Parameter(description = "商品ID") @PathVariable Long id) {
+        return Result.ok(productService.getDetail(id));
     }
 
     @Operation(summary = "新增商品")
     @PostMapping
-    public R<Void> add(@Valid @RequestBody ProductAddDTO dto) {
+    public Result<Void> add(@Valid @RequestBody ProductAddDTO dto) {
         productService.addProduct(dto.getProduct(), dto.getSkus());
-        return R.ok();
+        return Result.ok();
     }
 
     @Operation(summary = "编辑商品")
     @PutMapping("/{id}")
-    public R<Void> update(@Parameter(description = "商品ID") @PathVariable Long id,
-                          @Valid @RequestBody ProductAddDTO dto) {
+    public Result<Void> update(@Parameter(description = "商品ID") @PathVariable Long id,
+                               @Valid @RequestBody ProductAddDTO dto) {
         dto.getProduct().setId(id);
         productService.updateProduct(dto.getProduct(), dto.getSkus());
-        return R.ok();
+        return Result.ok();
     }
 
     @Operation(summary = "删除商品")
     @DeleteMapping("/{id}")
-    public R<Void> delete(@Parameter(description = "商品ID") @PathVariable Long id) {
+    public Result<Void> delete(@Parameter(description = "商品ID") @PathVariable Long id) {
         productService.removeById(id);
-        return R.ok();
+        return Result.ok();
     }
 
     @Operation(summary = "上下架商品")
     @PutMapping("/{id}/status")
-    public R<Void> updateStatus(@Parameter(description = "商品ID") @PathVariable Long id,
-                                @Parameter(description = "状态 1=上架 0=下架") @RequestParam Integer status) {
+    public Result<Void> updateStatus(@Parameter(description = "商品ID") @PathVariable Long id,
+                                     @Parameter(description = "状态 1=上架 0=下架") @RequestParam Integer status) {
         productService.updateStatus(id, status);
-        return R.ok();
+        return Result.ok();
     }
 
     @Operation(summary = "批量上下架")
     @PutMapping("/batch-status")
-    public R<Void> batchUpdateStatus(@Valid @RequestBody BatchStatusDTO dto) {
+    public Result<Void> batchUpdateStatus(@Valid @RequestBody BatchStatusDTO dto) {
         productService.batchUpdateStatus(dto.getIds(), dto.getStatus());
-        return R.ok();
+        return Result.ok();
     }
 }

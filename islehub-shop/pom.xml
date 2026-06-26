@@ -17,10 +17,6 @@
         </dependency>
         <dependency>
             <groupId>com.islehub</groupId>
-            <artifactId>islehub-user</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.islehub</groupId>
             <artifactId>islehub-product</artifactId>
         </dependency>
         <dependency>

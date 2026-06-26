@@ -4,7 +4,7 @@ import cn.dev33.satoken.exception.NotLoginException;
 import cn.dev33.satoken.exception.NotPermissionException;
 import cn.dev33.satoken.exception.NotRoleException;
 import com.islehub.common.enums.RCode;
-import com.islehub.common.result.R;
+import com.islehub.common.result.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -18,45 +18,45 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(NotLoginException.class)
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
-    public R<Void> handleNotLoginException(NotLoginException e) {
+    public Result<Void> handleNotLoginException(NotLoginException e) {
         log.warn("NotLoginException: {}", e.getMessage());
-        return R.fail(RCode.UNAUTHORIZED);
+        return Result.fail(RCode.UNAUTHORIZED);
     }
 
     @ExceptionHandler(NotPermissionException.class)
     @ResponseStatus(HttpStatus.FORBIDDEN)
-    public R<Void> handleNotPermissionException(NotPermissionException e) {
+    public Result<Void> handleNotPermissionException(NotPermissionException e) {
         log.warn("NotPermissionException: {}", e.getMessage());
-        return R.fail(RCode.FORBIDDEN);
+        return Result.fail(RCode.FORBIDDEN);
     }
 
     @ExceptionHandler(NotRoleException.class)
     @ResponseStatus(HttpStatus.FORBIDDEN)
-    public R<Void> handleNotRoleException(NotRoleException e) {
+    public Result<Void> handleNotRoleException(NotRoleException e) {
         log.warn("NotRoleException: {}", e.getMessage());
-        return R.fail(RCode.FORBIDDEN);
+        return Result.fail(RCode.FORBIDDEN);
     }
 
     @ExceptionHandler(BizException.class)
-    public R<Void> handleBizException(BizException e) {
+    public Result<Void> handleBizException(BizException e) {
         log.warn("BizException: {}", e.getMessage());
-        return R.fail(e.getCode(), e.getMessage());
+        return Result.fail(e.getCode(), e.getMessage());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public R<Void> handleValidation(MethodArgumentNotValidException e) {
+    public Result<Void> handleValidation(MethodArgumentNotValidException e) {
         String msg = e.getBindingResult().getFieldErrors().stream()
                 .map(f -> f.getField() + ": " + f.getDefaultMessage())
                 .reduce((a, b) -> a + "; " + b).orElse("参数校验失败");
         log.warn("Validation failed: {}", msg);
-        return R.fail(RCode.BAD_REQUEST.getCode(), msg);
+        return Result.fail(RCode.BAD_REQUEST.getCode(), msg);
     }
 
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    public R<Void> handleException(Exception e) {
+    public Result<Void> handleException(Exception e) {
         log.error("Unexpected error", e);
-        return R.fail(RCode.INTERNAL_ERROR);
+        return Result.fail(RCode.INTERNAL_ERROR);
     }
 }

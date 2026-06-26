@@ -1,4 +1,4 @@
-package com.islehub.common.config;
+package com.islehub.config;
 
 import org.springframework.amqp.core.*;
 import org.springframework.context.annotation.Bean;

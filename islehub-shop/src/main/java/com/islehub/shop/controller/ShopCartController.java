@@ -1,7 +1,7 @@
 package com.islehub.shop.controller;
 
 import cn.dev33.satoken.stp.StpUtil;
-import com.islehub.common.result.R;
+import com.islehub.common.result.Result;
 import com.islehub.shop.service.CartService;
 import lombok.RequiredArgsConstructor;
 import io.swagger.v3.oas.annotations.Operation;
@@ -25,38 +25,38 @@ public class ShopCartController {
 
     @Operation(summary = "查看购物车")
     @GetMapping
-    public R<List<CartService.CartItem>> list() {
-        return R.ok(cartService.list(userId()));
+    public Result<List<CartService.CartItem>> list() {
+        return Result.ok(cartService.list(userId()));
     }
 
     @Operation(summary = "加入购物车")
     @PostMapping
-    public R<Void> add(@RequestBody Map<String, Object> body) {
+    public Result<Void> add(@RequestBody Map<String, Object> body) {
         Long skuId = ((Number) body.get("skuId")).longValue();
         Integer quantity = ((Number) body.get("quantity")).intValue();
         cartService.add(userId(), skuId, quantity);
-        return R.ok();
+        return Result.ok();
     }
 
     @Operation(summary = "修改购物车商品数量")
     @PutMapping("/{skuId}")
-    public R<Void> updateQuantity(@Parameter(description = "SKU ID") @PathVariable Long skuId,
-                                  @RequestBody Map<String, Integer> body) {
+    public Result<Void> updateQuantity(@Parameter(description = "SKU ID") @PathVariable Long skuId,
+                                       @RequestBody Map<String, Integer> body) {
         cartService.updateQuantity(userId(), skuId, body.get("quantity"));
-        return R.ok();
+        return Result.ok();
     }
 
     @Operation(summary = "从购物车移除")
     @DeleteMapping("/{skuId}")
-    public R<Void> remove(@Parameter(description = "SKU ID") @PathVariable Long skuId) {
+    public Result<Void> remove(@Parameter(description = "SKU ID") @PathVariable Long skuId) {
         cartService.remove(userId(), skuId);
-        return R.ok();
+        return Result.ok();
     }
 
     @Operation(summary = "清空购物车")
     @DeleteMapping
-    public R<Void> clear() {
+    public Result<Void> clear() {
         cartService.clear(userId());
-        return R.ok();
+        return Result.ok();
     }
 }

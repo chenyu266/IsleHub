@@ -2,7 +2,7 @@ package com.islehub.shop.controller;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.islehub.common.result.R;
+import com.islehub.common.result.Result;
 import com.islehub.order.entity.Order;
 import com.islehub.shop.service.ShopOrderService;
 import lombok.RequiredArgsConstructor;
@@ -26,40 +26,40 @@ public class ShopOrderController {
 
     @Operation(summary = "提交订单（结算）")
     @PostMapping("/checkout")
-    public R<ShopOrderService.CheckoutResult> checkout(@RequestBody Map<String, Object> body) {
+    public Result<ShopOrderService.CheckoutResult> checkout(@RequestBody Map<String, Object> body) {
         Long addressId = ((Number) body.get("addressId")).longValue();
         String remark = (String) body.get("remark");
         ShopOrderService.CheckoutResult result = shopOrderService.checkout(userId(), addressId, remark);
-        return R.ok(result);
+        return Result.ok(result);
     }
 
     @Operation(summary = "分页查询我的订单")
     @GetMapping("/page")
-    public R<R.PageResult<Order>> page(
+    public Result<Result.PageResult<Order>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int pageSize,
             @RequestParam(required = false) String status) {
         Page<Order> result = shopOrderService.pageOrders(page, pageSize, userId(), status);
-        return R.page(result.getRecords(), result.getTotal(), (long) page, (long) pageSize);
+        return Result.page(result.getRecords(), result.getTotal(), (long) page, (long) pageSize);
     }
 
     @Operation(summary = "订单详情")
     @GetMapping("/{id}")
-    public R<Order> detail(@Parameter(description = "订单ID") @PathVariable Long id) {
-        return R.ok(shopOrderService.getDetail(id, userId()));
+    public Result<Order> detail(@Parameter(description = "订单ID") @PathVariable Long id) {
+        return Result.ok(shopOrderService.getDetail(id, userId()));
     }
 
     @Operation(summary = "取消订单")
     @PutMapping("/{id}/cancel")
-    public R<Void> cancel(@Parameter(description = "订单ID") @PathVariable Long id) {
+    public Result<Void> cancel(@Parameter(description = "订单ID") @PathVariable Long id) {
         shopOrderService.cancelOrder(id, userId());
-        return R.ok();
+        return Result.ok();
     }
 
     @Operation(summary = "确认收货")
     @PutMapping("/{id}/confirm")
-    public R<Void> confirm(@Parameter(description = "订单ID") @PathVariable Long id) {
+    public Result<Void> confirm(@Parameter(description = "订单ID") @PathVariable Long id) {
         shopOrderService.confirmOrder(id, userId());
-        return R.ok();
+        return Result.ok();
     }
 }

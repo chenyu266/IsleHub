@@ -24,7 +24,7 @@ IsleHub/
 ├── islehub-product/       # 商品模块（商品/分类/SKU 管理）
 ├── islehub-order/         # 订单模块（订单/物流/Excel 导出）
 ├── islehub-shop/          # 商城后端（聚合上述模块，提供 C 端 API）
-├── islehub-admin/         # 启动入口（聚合所有业务模块）
+├── islehub-server/        # 启动入口（聚合所有业务模块）
 ├── islehub-web/           # 管理后台前端
 ├── islehub-shop-web/      # C 端商城前端
 ├── docs/                  # 设计文档
@@ -34,9 +34,9 @@ IsleHub/
 ### 模块依赖
 
 ```
-common ──┬── user ────┐
-         ├── product ─┼── shop ─── admin
-         └── order ───┘
+common ──┬── user ─────────────────────────┐
+         ├── product ── order ── shop ──┼── server
+         └──────────────────────────────┘
 ```
 
 ## 功能概览
@@ -83,13 +83,13 @@ cp .env.example .env
 4. 启动应用（根目录执行 Maven 会自动读取 `.env`）：
 
 ```bash
-mvn clean install -pl islehub-admin -am
+mvn clean install -pl islehub-server -am
 ```
 
 5. 启动管理后台：
 
 ```bash
-mvn spring-boot:run -pl islehub-admin
+mvn spring-boot:run -pl islehub-server
 ```
 
 应用默认运行在 `http://localhost:8080`。
@@ -116,7 +116,7 @@ npm run dev        # 默认 http://localhost:5174
 
 ```bash
 # 后端打包
-mvn clean package -pl islehub-admin -am
+mvn clean package -pl islehub-server -am
 
 # 前端构建
 cd islehub-web && npm run build

@@ -1,7 +1,7 @@
 package com.islehub.shop.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.islehub.common.result.R;
+import com.islehub.common.result.Result;
 import com.islehub.product.entity.Product;
 import com.islehub.product.service.ProductService;
 import lombok.RequiredArgsConstructor;
@@ -15,17 +15,17 @@ public class ShopProductController {
     private final ProductService productService;
 
     @GetMapping("/page")
-    public R<R.PageResult<Product>> page(
+    public Result<Result.PageResult<Product>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int pageSize,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long categoryId) {
         Page<Product> result = productService.pageProducts(page, pageSize, keyword, categoryId, 1);
-        return R.page(result.getRecords(), result.getTotal(), (long) page, (long) pageSize);
+        return Result.page(result.getRecords(), result.getTotal(), page, pageSize);
     }
 
     @GetMapping("/{id}")
-    public R<Product> detail(@PathVariable Long id) {
-        return R.ok(productService.getDetail(id));
+    public Result<Product> detail(@PathVariable Long id) {
+        return Result.ok(productService.getDetail(id));
     }
 }

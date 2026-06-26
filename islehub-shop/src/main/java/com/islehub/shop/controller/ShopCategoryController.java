@@ -1,6 +1,6 @@
 package com.islehub.shop.controller;
 
-import com.islehub.common.result.R;
+import com.islehub.common.result.Result;
 import com.islehub.product.entity.Category;
 import com.islehub.product.service.CategoryService;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +16,7 @@ public class ShopCategoryController {
     private final CategoryService categoryService;
 
     @GetMapping("/tree")
-    public R<List<Category>> tree() {
-        return R.ok(categoryService.getTree());
+    public Result<List<Category>> tree() {
+        return Result.ok(categoryService.getTree());
     }
 }

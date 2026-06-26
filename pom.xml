@@ -15,7 +15,7 @@
         <module>islehub-product</module>
         <module>islehub-order</module>
         <module>islehub-shop</module>
-        <module>islehub-admin</module>
+        <module>islehub-server</module>
     </modules>
 
     <parent>

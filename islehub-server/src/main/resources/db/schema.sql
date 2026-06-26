@@ -1,13 +1,18 @@
 CREATE TABLE IF NOT EXISTS `user` (
     `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `email` varchar(64) NOT NULL,
     `username` VARCHAR(50) NOT NULL,
     `password` VARCHAR(255) NOT NULL,
-    `real_name` VARCHAR(50),
     `phone` VARCHAR(20),
-    `role` VARCHAR(20) NOT NULL DEFAULT 'operator',
+    `avatar` varchar(255) DEFAULT NULL COMMENT '头像地址',
+    `last_login_time` datetime DEFAULT NULL,
+    `last_login_ip` varchar(45) DEFAULT NULL,
+    `delete_flag` tinyint NOT NULL DEFAULT 0 COMMENT '逻辑删除 0未删 1已删',
+    `role` VARCHAR(20) NOT NULL,
     `status` TINYINT NOT NULL DEFAULT 1,
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_email` (`email`),
     UNIQUE INDEX `uk_username` (`username`)
 );
 

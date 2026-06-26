@@ -14,8 +14,10 @@ public class User {
     private String username;
     @NotBlank(message = "密码不能为空")
     private String password;
-    private String realName;
+    @NotBlank(message = "邮箱不能为空")
+    private String email;
     private String phone;
+    private LocalDateTime lastLoginTime;
     private String role;
     private Integer status;
     @TableField(fill = FieldFill.INSERT)

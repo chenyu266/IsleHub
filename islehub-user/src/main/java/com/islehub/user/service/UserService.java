@@ -2,13 +2,16 @@ package com.islehub.user.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.islehub.common.result.Result;
+import com.islehub.user.dto.UserRegisterDTO;
 import com.islehub.user.entity.User;
 
 public interface UserService extends IService<User> {
-    String login(String username, String password);
+    Result<String> login(String account, String password);
+    void sendEmailCode(String email);
     Page<User> pageUsers(int page, int pageSize, String keyword);
     void addUser(User user);
-    void register(User user);
+    void register(UserRegisterDTO dto);
     void updateUser(User user);
     void updateStatus(Long id, Integer status);
 }

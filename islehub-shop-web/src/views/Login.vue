@@ -3,7 +3,7 @@
     <div class="auth-card">
       <h2>登录</h2>
       <el-form :model="form" label-width="0">
-        <el-form-item><el-input v-model="form.username" placeholder="用户名" /></el-form-item>
+        <el-form-item><el-input v-model="form.username" placeholder="邮箱" /></el-form-item>
         <el-form-item><el-input v-model="form.password" type="password" placeholder="密码" show-password /></el-form-item>
         <el-form-item><el-button type="primary" style="width:100%" @click="handleLogin">登 录</el-button></el-form-item>
       </el-form>
@@ -27,7 +27,7 @@ async function handleLogin() {
     localStorage.setItem('shop-token', res.data)
     ElMessage.success('登录成功')
     router.push('/')
-  } catch { ElMessage.error('登录失败') }
+  } catch { /* 错误消息已由请求拦截器统一处理 */ }
 }
 </script>
 
