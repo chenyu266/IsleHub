@@ -1,4 +1,4 @@
-package com.islehub.shop.controller;
+package com.islehub.product.controller.shop;
 
 import com.islehub.common.result.Result;
 import com.islehub.product.entity.Category;

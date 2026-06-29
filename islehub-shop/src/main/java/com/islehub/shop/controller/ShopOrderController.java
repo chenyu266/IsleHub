@@ -4,6 +4,7 @@ import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.islehub.common.result.Result;
 import com.islehub.order.entity.Order;
+import com.islehub.order.service.CheckoutService;
 import com.islehub.shop.service.ShopOrderService;
 import lombok.RequiredArgsConstructor;
 import io.swagger.v3.oas.annotations.Operation;
@@ -26,10 +27,10 @@ public class ShopOrderController {
 
     @Operation(summary = "提交订单（结算）")
     @PostMapping("/checkout")
-    public Result<ShopOrderService.CheckoutResult> checkout(@RequestBody Map<String, Object> body) {
+    public Result<CheckoutService.CheckoutResult> checkout(@RequestBody Map<String, Object> body) {
         Long addressId = ((Number) body.get("addressId")).longValue();
         String remark = (String) body.get("remark");
-        ShopOrderService.CheckoutResult result = shopOrderService.checkout(userId(), addressId, remark);
+        CheckoutService.CheckoutResult result = shopOrderService.checkout(userId(), addressId, remark);
         return Result.ok(result);
     }
 

@@ -1,4 +1,4 @@
-package com.islehub.shop.controller;
+package com.islehub.product.controller.shop;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.islehub.common.result.Result;

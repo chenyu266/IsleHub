@@ -1,4 +1,4 @@
-package com.islehub.shop.mq;
+package com.islehub.product.mq;
 
 import com.islehub.common.mq.OrderCreatedEvent;
 import com.islehub.product.mapper.ProductSkuMapper;

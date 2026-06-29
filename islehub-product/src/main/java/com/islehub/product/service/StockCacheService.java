@@ -1,4 +1,4 @@
-package com.islehub.shop.service;
+package com.islehub.product.service;
 
 import com.islehub.common.exception.BizException;
 import com.islehub.product.mapper.ProductSkuMapper;
@@ -7,7 +7,6 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 
-import java.util.Collections;
 import java.util.List;
 
 /**

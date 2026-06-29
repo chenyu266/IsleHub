@@ -11,6 +11,7 @@ import com.islehub.order.mapper.OrderItemMapper;
 import com.islehub.order.mapper.OrderMapper;
 import com.islehub.order.mapper.OrderShippingMapper;
 import com.islehub.order.service.OrderService;
+import com.islehub.product.mapper.ProductSkuMapper;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
@@ -39,6 +40,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
 
     private final OrderItemMapper itemMapper;
     private final OrderShippingMapper shippingMapper;
+    private final ProductSkuMapper skuMapper;
 
     @Override
     public Page<Order> pageOrders(int page, int pageSize, String orderNo, String status,
@@ -146,6 +148,69 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
             return out.toByteArray();
         } catch (Exception e) {
             throw new BizException("导出Excel失败");
+        }
+    }
+
+    // ──────────────── C 端方法 ────────────────
+
+    @Override
+    public Page<Order> pageUserOrders(int page, int pageSize, Long userId, String status) {
+        LambdaQueryWrapper<Order> wrapper = new LambdaQueryWrapper<Order>()
+                .eq(Order::getUserId, userId);
+        if (status != null && !status.isEmpty()) {
+            wrapper.eq(Order::getStatus, status);
+        }
+        wrapper.orderByDesc(Order::getCreatedAt);
+        return page(new Page<>(page, pageSize), wrapper);
+    }
+
+    @Override
+    public Order getUserOrderDetail(Long id, Long userId) {
+        Order order = baseMapper.selectDetailById(id);
+        if (order == null || !order.getUserId().equals(userId)) {
+            throw new BizException("订单不存在");
+        }
+        return order;
+    }
+
+    @Override
+    @Transactional
+    public void cancelUserOrder(Long id, Long userId) {
+        Order order = getById(id);
+        if (order == null || !order.getUserId().equals(userId)) {
+            throw new BizException("订单不存在");
+        }
+        if (!"paid".equals(order.getStatus())) {
+            throw new BizException("只能取消已支付未发货的订单");
+        }
+        order.setStatus("cancelled");
+        updateById(order);
+
+        // 恢复库存
+        List<OrderItem> items = itemMapper.selectList(
+                new LambdaQueryWrapper<OrderItem>().eq(OrderItem::getOrderId, id));
+        for (OrderItem item : items) {
+            skuMapper.addStock(item.getSkuId(), item.getQuantity());
+        }
+    }
+
+    @Override
+    @Transactional
+    public void confirmUserOrder(Long id, Long userId) {
+        Order order = getById(id);
+        if (order == null || !order.getUserId().equals(userId)) {
+            throw new BizException("订单不存在");
+        }
+        if (!"shipped".equals(order.getStatus())) {
+            throw new BizException("只能确认已发货的订单");
+        }
+        order.setStatus("completed");
+        updateById(order);
+        OrderShipping shipping = shippingMapper.selectOne(
+                new LambdaQueryWrapper<OrderShipping>().eq(OrderShipping::getOrderId, id));
+        if (shipping != null) {
+            shipping.setDeliveredAt(LocalDateTime.now());
+            shippingMapper.updateById(shipping);
         }
     }
 }
