@@ -4,7 +4,10 @@ import cn.dev33.satoken.annotation.SaCheckRole;
 import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.islehub.common.result.Result;
+import com.islehub.user.dto.LoginDTO;
+import com.islehub.user.dto.UserAddDTO;
 import com.islehub.user.dto.UserRegisterDTO;
+import com.islehub.user.dto.UserUpdateDTO;
 import com.islehub.user.entity.User;
 import com.islehub.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -24,8 +27,8 @@ public class UserController {
 
     @Operation(summary = "登录（支持邮箱或用户名）")
     @PostMapping("/login")
-    public Result<String> login(@RequestBody User user) {
-        return userService.login(user.getUsername(), user.getPassword());
+    public Result<String> login(@RequestBody LoginDTO dto) {
+        return userService.login(dto.getAccount(), dto.getPassword());
     }
 
     @Operation(summary = "发送邮箱验证码")
@@ -64,8 +67,8 @@ public class UserController {
     @SaCheckRole("admin")
     @Operation(summary = "新增用户")
     @PostMapping
-    public Result<Void> add(@Valid @RequestBody User user) {
-        userService.addUser(user);
+    public Result<Void> add(@Valid @RequestBody UserAddDTO dto) {
+        userService.addUser(dto);
         return Result.ok();
     }
 
@@ -73,9 +76,8 @@ public class UserController {
     @Operation(summary = "编辑用户")
     @PutMapping("/{id}")
     public Result<Void> update(@Parameter(description = "用户ID") @PathVariable Long id,
-                               @Valid @RequestBody User user) {
-        user.setId(id);
-        userService.updateUser(user);
+                               @Valid @RequestBody UserUpdateDTO dto) {
+        userService.updateUser(id, dto);
         return Result.ok();
     }
 

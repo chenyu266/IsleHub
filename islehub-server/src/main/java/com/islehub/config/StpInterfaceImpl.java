@@ -1,5 +1,6 @@
 package com.islehub.config;
 
+import cn.dev33.satoken.exception.NotPermissionException;
 import cn.dev33.satoken.stp.StpInterface;
 import com.islehub.user.entity.User;
 import com.islehub.user.mapper.UserMapper;
@@ -31,7 +32,10 @@ public class StpInterfaceImpl implements StpInterface {
         // Sa-Token 内部将 loginId 存为 String，需要 parse 回 Long
         Long userId = Long.valueOf(loginId.toString());
         User user = userMapper.selectById(userId);
-        if (user == null || user.getRole() == null) {
+        if (user == null || user.getStatus() == null || user.getStatus() != 1) {
+            throw new NotPermissionException("账号已被禁用");
+        }
+        if (user.getRole() == null) {
             return Collections.emptyList();
         }
         return Collections.singletonList(user.getRole());
