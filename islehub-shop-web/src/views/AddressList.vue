@@ -28,9 +28,17 @@
       <el-form :model="form" label-width="80px">
         <el-form-item label="收货人"><el-input v-model="form.receiverName" /></el-form-item>
         <el-form-item label="手机号"><el-input v-model="form.receiverPhone" /></el-form-item>
-        <el-form-item label="省"><el-input v-model="form.province" /></el-form-item>
-        <el-form-item label="市"><el-input v-model="form.city" /></el-form-item>
-        <el-form-item label="区"><el-input v-model="form.district" /></el-form-item>
+        <el-form-item label="地区">
+          <el-cascader
+            v-model="form.region"
+            :options="chinaRegionOptions"
+            :props="regionProps"
+            placeholder="请选择省 / 市 / 区"
+            filterable
+            clearable
+            style="width:100%"
+          />
+        </el-form-item>
         <el-form-item label="详细地址"><el-input v-model="form.detail" /></el-form-item>
         <el-form-item label="默认地址"><el-switch v-model="form.isDefaultBool" /></el-form-item>
       </el-form>
@@ -46,12 +54,23 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getAddresses, addAddress, updateAddress, deleteAddress } from '../api/address'
+import { chinaRegionOptions, isValidRegionPath } from '../data/chinaRegions'
 
 const addresses = ref([])
 const selectedId = ref(null)
 const dialogVisible = ref(false)
 const editingAddr = ref(null)
-const form = reactive({ receiverName: '', receiverPhone: '', province: '', city: '', district: '', detail: '', isDefaultBool: false })
+const regionProps = { expandTrigger: 'hover', emitPath: true }
+const form = reactive({
+  receiverName: '',
+  receiverPhone: '',
+  province: '',
+  city: '',
+  district: '',
+  region: [],
+  detail: '',
+  isDefaultBool: false
+})
 
 onMounted(fetchAddresses)
 async function fetchAddresses() {
@@ -62,6 +81,7 @@ function openDialog(addr) {
   editingAddr.value = addr
   if (addr) {
     Object.assign(form, addr)
+    form.region = [addr.province, addr.city, addr.district].filter(Boolean)
     form.isDefaultBool = addr.isDefault === 1
   } else {
     Object.assign(form, {
@@ -75,6 +95,7 @@ function openDialog(addr) {
       province: '',
       city: '',
       district: '',
+      region: [],
       detail: '',
       isDefaultBool: false
     })}
@@ -82,8 +103,21 @@ function openDialog(addr) {
 }
 
 async function handleSave() {
+  if (!isValidRegionPath(form.region)) {
+    ElMessage.warning('请选择省 / 市 / 区')
+    return
+  }
   try {
-    const data = { ...form, isDefault: form.isDefaultBool ? 1 : 0 }
+    const [province, city, district] = form.region
+    const data = {
+      receiverName: form.receiverName,
+      receiverPhone: form.receiverPhone,
+      province,
+      city,
+      district,
+      detail: form.detail,
+      isDefault: form.isDefaultBool ? 1 : 0
+    }
     if (editingAddr.value) {
       await updateAddress(editingAddr.value.id, data)
     } else {
