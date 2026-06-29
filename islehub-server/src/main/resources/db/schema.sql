@@ -17,12 +17,14 @@ CREATE TABLE IF NOT EXISTS `user` (
 );
 
 CREATE TABLE IF NOT EXISTS `category` (
-    `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
-    `name` VARCHAR(100) NOT NULL,
-    `parent_id` BIGINT NOT NULL DEFAULT 0,
-    `sort_order` INT NOT NULL DEFAULT 0,
-    INDEX `idx_category_parent` (`parent_id`, `sort_order`)
+   `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+   `name` VARCHAR(100) NOT NULL,
+   `parent_id` BIGINT NOT NULL DEFAULT 0,
+   `level` TINYINT NOT NULL DEFAULT 0 COMMENT '1=一级 2=二级 3=三级',
+   INDEX `idx_category_parent` (`parent_id`, `level`),
+   INDEX `idx_category_level` (`level`)
 );
+
 
 CREATE TABLE IF NOT EXISTS `product` (
     `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -103,3 +105,13 @@ CREATE TABLE IF NOT EXISTS `address` (
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX `idx_address_user` (`user_id`, `is_default`)
 );
+
+CREATE TABLE IF NOT EXISTS `china_region` (
+                                              `code` INT PRIMARY KEY,
+                                              `name` VARCHAR(50) NOT NULL,
+                                              `parent_code` INT NOT NULL DEFAULT 0,
+                                              `level` TINYINT NOT NULL COMMENT '1=省 2=市 3=区县',
+                                              INDEX `idx_region_parent` (`parent_code`, `level`),
+                                              INDEX `idx_region_name` (`name`, `level`)
+);
+

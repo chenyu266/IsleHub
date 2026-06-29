@@ -6,4 +6,6 @@ import java.util.List;
 
 public interface CategoryService extends IService<Category> {
     List<Category> getTree();
+    List<Long> getCategoryAndChildrenIds(Long categoryId);
+    List<Category> listLeaves();
 }

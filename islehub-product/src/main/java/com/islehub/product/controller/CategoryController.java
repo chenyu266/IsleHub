@@ -50,4 +50,10 @@ public class CategoryController {
         categoryService.removeById(id);
         return Result.ok();
     }
+
+    @Operation(summary = "获取三级叶子分类")
+    @GetMapping("/leaves")
+    public Result<List<Category>> leaves() {
+        return Result.ok(categoryService.listLeaves());
+    }
 }

@@ -33,4 +33,4 @@ spring:
     init:
       mode: always
       schema-locations: classpath:db/schema.sql
-      data-locations: classpath:db/data.sql
+      data-locations: classpath:db/data.sql, classpath:db/china_region_data.sql

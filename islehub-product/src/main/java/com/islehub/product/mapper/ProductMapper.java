@@ -6,6 +6,8 @@ import com.islehub.product.entity.Product;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.util.List;
+
 @Mapper
 public interface ProductMapper extends BaseMapper<Product> {
 
@@ -15,4 +17,9 @@ public interface ProductMapper extends BaseMapper<Product> {
                                @Param("status") Integer status);
 
     Product selectDetailById(@Param("id") Long id);
+
+    Page<Product> pageProductsByCategoryIds(Page<Product> page,
+                                            @Param("keyword") String keyword,
+                                            @Param("categoryIds") List<Long> categoryIds,
+                                            @Param("status") Integer status);
 }

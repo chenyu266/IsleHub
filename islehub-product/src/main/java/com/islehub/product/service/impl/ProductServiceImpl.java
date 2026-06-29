@@ -9,6 +9,7 @@ import com.islehub.product.entity.Product;
 import com.islehub.product.entity.ProductSku;
 import com.islehub.product.mapper.ProductMapper;
 import com.islehub.product.mapper.ProductSkuMapper;
+import com.islehub.product.service.CategoryService;
 import com.islehub.product.service.ProductService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,22 +22,34 @@ import java.util.stream.Collectors;
 public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> implements ProductService {
 
     private final ProductSkuMapper skuMapper;
+    private final CategoryService categoryService;
 
-    public ProductServiceImpl(ProductSkuMapper skuMapper) {
+    public ProductServiceImpl(ProductSkuMapper skuMapper, CategoryService categoryService) {
         this.skuMapper = skuMapper;
+        this.categoryService = categoryService;
     }
+
 
     @Override
     public Page<Product> pageProducts(int page, int pageSize, String keyword, Long categoryId, Integer status) {
-        Page<Product> result = baseMapper.pageProducts(
-                new Page<>(page, pageSize), keyword, categoryId, status);
+        List<Long> categoryIds = categoryService.getCategoryAndChildrenIds(categoryId);
+
+
+        Page<Product> result;
+        if (categoryIds.isEmpty()) {
+            result = baseMapper.pageProducts(new Page<>(page, pageSize), keyword, null, status);
+        } else {
+            result = baseMapper.pageProductsByCategoryIds(
+                    new Page<>(page, pageSize), keyword, categoryIds, status);
+        }
+
         if (!result.getRecords().isEmpty()) {
             List<Long> productIds = result.getRecords().stream().map(Product::getId).toList();
             List<ProductSku> allSkus = skuMapper.selectByProductIds(productIds);
             Map<Long, List<ProductSku>> skuMap = allSkus.stream()
-                .collect(Collectors.groupingBy(ProductSku::getProductId));
+                    .collect(Collectors.groupingBy(ProductSku::getProductId));
             result.getRecords().forEach(p ->
-                p.setSkus(skuMap.getOrDefault(p.getId(), List.of())));
+                    p.setSkus(skuMap.getOrDefault(p.getId(), List.of())));
         }
         return result;
     }
