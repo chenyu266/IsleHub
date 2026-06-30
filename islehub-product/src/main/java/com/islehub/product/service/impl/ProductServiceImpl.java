@@ -268,4 +268,9 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
     public List<ProductSku> getSkusByProductIds(List<Long> productIds) {
         return skuMapper.selectByProductIds(productIds);
     }
+
+    @Override
+    public SkuDetail getSkuDetail(Long skuId) {
+        return skuMapper.selectSkuDetail(skuId);
+    }
 }

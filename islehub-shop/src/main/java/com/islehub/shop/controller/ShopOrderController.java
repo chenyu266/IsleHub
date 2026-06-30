@@ -5,13 +5,14 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.islehub.common.result.Result;
 import com.islehub.order.entity.Order;
 import com.islehub.order.service.CheckoutService;
+import com.islehub.shop.dto.CheckoutDTO;
 import com.islehub.shop.service.ShopOrderService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.*;
-import java.util.Map;
 
 @Tag(name = "商城-订单", description = "C端订单：下单、查单、取消、确认收货")
 @RequiredArgsConstructor
@@ -27,10 +28,9 @@ public class ShopOrderController {
 
     @Operation(summary = "提交订单（结算）")
     @PostMapping("/checkout")
-    public Result<CheckoutService.CheckoutResult> checkout(@RequestBody Map<String, Object> body) {
-        Long addressId = ((Number) body.get("addressId")).longValue();
-        String remark = (String) body.get("remark");
-        CheckoutService.CheckoutResult result = shopOrderService.checkout(userId(), addressId, remark);
+    public Result<CheckoutService.CheckoutResult> checkout(@Valid @RequestBody CheckoutDTO dto) {
+        String remark = dto.getRemark() != null ? dto.getRemark() : "";
+        CheckoutService.CheckoutResult result = shopOrderService.checkout(userId(), dto.getAddressId(), remark);
         return Result.ok(result);
     }
 

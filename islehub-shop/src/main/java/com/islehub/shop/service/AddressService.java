@@ -38,8 +38,18 @@ public class AddressService extends ServiceImpl<AddressMapper, Address> {
         if (address.getIsDefault() != null && address.getIsDefault() == 1) {
             clearDefault(userId);
         }
-        address.setUserId(userId);
-        updateById(address);
+        // 只更新显式传入的字段，避免 request body 中的 null 误清空
+        Address update = new Address();
+        update.setId(address.getId());
+        update.setUserId(userId);
+        update.setReceiverName(address.getReceiverName());
+        update.setReceiverPhone(address.getReceiverPhone());
+        update.setProvince(address.getProvince());
+        update.setCity(address.getCity());
+        update.setDistrict(address.getDistrict());
+        update.setDetail(address.getDetail());
+        update.setIsDefault(address.getIsDefault());
+        updateById(update);
     }
 
     public void deleteAddress(Long id, Long userId) {

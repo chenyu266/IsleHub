@@ -3,9 +3,8 @@ package com.islehub.shop.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.islehub.common.exception.BizException;
-import com.islehub.product.entity.Product;          // ← 替换 ProductMapper
-import com.islehub.product.entity.ProductSku;       // 仍需 entity
 import com.islehub.product.service.ProductService;
+import com.islehub.product.service.ProductService.SkuDetail;
 import lombok.Data;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -82,11 +81,11 @@ public class CartService {
     }
 
     public void add(Long userId, Long skuId, Integer quantity) {
-        ProductSku sku = productService.getSkuById(skuId);
-        if (sku == null || sku.getStatus() == 0 || sku.getStock() <= 0) {
+        SkuDetail detail = productService.getSkuDetail(skuId);
+        if (detail == null || detail.getStatus() == null || detail.getStatus() == 0
+                || detail.getStock() == null || detail.getStock() <= 0) {
             throw new BizException("SKU 不存在、已下架或库存不足");
         }
-        Product product = productService.getById(sku.getProductId());
         String cartKey = key(userId);
         String field = skuId.toString();
         for (int retry = 0; retry < 3; retry++) {
@@ -96,11 +95,11 @@ public class CartService {
             if (current == null) {
                 next = new CartItem();
                 next.setSkuId(skuId);
-                next.setProductId(sku.getProductId());
-                next.setProductName(product != null ? product.getName() : "");
-                next.setProductImage(product != null ? product.getMainImage() : null);
-                next.setSkuSpec(sku.getSpec());
-                next.setPrice(sku.getPrice());
+                next.setProductId(detail.getProductId());
+                next.setProductName(detail.getProductName() != null ? detail.getProductName() : "");
+                next.setProductImage(detail.getProductImage() != null ? detail.getProductImage() : null);
+                next.setSkuSpec(detail.getSpec());
+                next.setPrice(detail.getPrice());
                 next.setQuantity(quantity);
                 next.setVersion(0L);
                 expectedVersion = -1L;
@@ -108,9 +107,9 @@ public class CartService {
                 next = new CartItem();
                 next.setSkuId(current.getSkuId());
                 next.setProductId(current.getProductId());
-                next.setProductName(product != null ? product.getName() : current.getProductName());
-                next.setProductImage(product != null ? product.getMainImage() : current.getProductImage());
-                next.setSkuSpec(sku.getSpec());
+                next.setProductName(detail.getProductName() != null ? detail.getProductName() : current.getProductName());
+                next.setProductImage(detail.getProductImage() != null ? detail.getProductImage() : current.getProductImage());
+                next.setSkuSpec(detail.getSpec());
                 next.setPrice(current.getPrice());
                 next.setQuantity(current.getQuantity() + quantity);
                 next.setVersion(current.getVersion() + 1);

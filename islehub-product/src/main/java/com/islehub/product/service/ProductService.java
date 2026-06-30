@@ -4,6 +4,9 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.islehub.product.entity.Product;
 import com.islehub.product.entity.ProductSku;
+import lombok.Data;
+
+import java.math.BigDecimal;
 import java.util.List;
 
 public interface ProductService extends IService<Product> {
@@ -24,4 +27,19 @@ public interface ProductService extends IService<Product> {
 
     /** 批量按 productId 查 SKU */
     List<ProductSku> getSkusByProductIds(List<Long> productIds);
+
+    /** 查 SKU + 商品名/主图（一次 JOIN，供加购等高频场景） */
+    SkuDetail getSkuDetail(Long skuId);
+
+    @Data
+    class SkuDetail {
+        private Long skuId;
+        private Long productId;
+        private String spec;
+        private BigDecimal price;
+        private Integer stock;
+        private Integer status;
+        private String productName;
+        private String productImage;
+    }
 }
