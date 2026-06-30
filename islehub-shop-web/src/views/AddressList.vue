@@ -20,14 +20,14 @@
         </div>
         <div class="addr-detail">{{ addr.province }}{{ addr.city }}{{ addr.district }} {{ addr.detail }}</div>
         <div class="addr-actions">
-          <el-button text type="primary" @click="openDialog(addr)">编辑</el-button>
-          <el-button text type="danger" @click="handleDelete(addr.id)">删除</el-button>
+          <el-button text type="primary" @click.stop="openDialog(addr)">编辑</el-button>
+          <el-button text type="danger" :loading="deletingId === addr.id" @click.stop="handleDelete(addr)">删除</el-button>
         </div>
       </div>
     </div>
     <el-dialog :title="editingAddr ? '编辑地址' : '新增地址'" v-model="dialogVisible" width="500px">
       <el-form ref="formRef" :model="form" :rules="formRules" label-width="80px" status-icon>
-        <el-form-item label="收货人"><el-input v-model="form.receiverName" /></el-form-item>
+        <el-form-item label="收货人" prop="receiverName"><el-input v-model="form.receiverName" placeholder="请输入收货人姓名" /></el-form-item>
         <el-form-item label="手机号" prop="receiverPhone">
           <el-input v-model="form.receiverPhone" placeholder="请输入11位手机号" />
         </el-form-item>
@@ -48,8 +48,8 @@
         <el-form-item label="默认地址"><el-switch v-model="form.isDefaultBool" /></el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSave">保存</el-button>
+        <el-button :disabled="saving" @click="dialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="saving" @click="handleSave">保存</el-button>
       </template>
     </el-dialog>
   </div>
@@ -57,17 +57,21 @@
 
 <script setup>
 import { ref, reactive, onMounted, nextTick } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage } from 'element-plus/es/components/message/index.mjs'
+import { ElMessageBox } from 'element-plus/es/components/message-box/index.mjs'
 import { getAddresses, addAddress, updateAddress, deleteAddress } from '../api/address'
 import PageSkeleton from '../components/PageSkeleton.vue'
-import { chinaRegionOptions, isValidRegionPath } from '../data/chinaRegions'
 
 const addresses = ref([])
 const selectedId = ref(null)
 const dialogVisible = ref(false)
 const editingAddr = ref(null)
 const loading = ref(true)
+const saving = ref(false)
+const deletingId = ref(null)
 const formRef = ref(null)
+const chinaRegionOptions = ref([])
+let validateRegionPath = null
 const regionProps = { expandTrigger: 'hover', emitPath: true }
 const form = reactive({
   receiverName: '',
@@ -80,6 +84,9 @@ const form = reactive({
   isDefaultBool: false
 })
 const formRules = {
+  receiverName: [
+    { validator: validateReceiverName, trigger: ['blur', 'change'] }
+  ],
   receiverPhone: [
     { validator: validatePhone, trigger: ['blur', 'change'] }
   ],
@@ -98,7 +105,20 @@ async function fetchAddresses() {
   finally { loading.value = false }
 }
 
-function openDialog(addr) {
+async function ensureRegionsLoaded() {
+  if (chinaRegionOptions.value.length && validateRegionPath) return
+  const regionModule = await import('../data/chinaRegions')
+  chinaRegionOptions.value = regionModule.chinaRegionOptions
+  validateRegionPath = regionModule.isValidRegionPath
+}
+
+async function openDialog(addr) {
+  try {
+    await ensureRegionsLoaded()
+  } catch {
+    ElMessage.error('加载地区数据失败')
+    return
+  }
   editingAddr.value = addr
   if (addr) {
     Object.assign(form, addr)
@@ -125,12 +145,14 @@ function openDialog(addr) {
 }
 
 async function handleSave() {
+  if (saving.value) return
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
+  saving.value = true
   try {
     const [province, city, district] = form.region
     const data = {
-      receiverName: form.receiverName,
+      receiverName: String(form.receiverName || '').trim(),
       receiverPhone: String(form.receiverPhone || '').trim(),
       province,
       city,
@@ -147,6 +169,15 @@ async function handleSave() {
     await fetchAddresses()
     ElMessage.success('保存成功')
   } catch { ElMessage.error('保存失败') }
+  finally { saving.value = false }
+}
+
+function validateReceiverName(_rule, value, callback) {
+  if (!String(value || '').trim()) {
+    callback(new Error('收货人不能为空'))
+    return
+  }
+  callback()
 }
 
 function validatePhone(_rule, value, callback) {
@@ -163,7 +194,7 @@ function validatePhone(_rule, value, callback) {
 }
 
 function validateRegion(_rule, value, callback) {
-  if (!isValidRegionPath(value)) {
+  if (!validateRegionPath || !validateRegionPath(value)) {
     callback(new Error('请选择省 / 市 / 区'))
     return
   }
@@ -178,13 +209,24 @@ function validateDetail(_rule, value, callback) {
   callback()
 }
 
-async function handleDelete(id) {
-
+async function handleDelete(addr) {
+  if (deletingId.value) return
   try {
-    await deleteAddress(id)
+    await ElMessageBox.confirm(`确定删除「${addr.receiverName} ${addr.receiverPhone}」这条地址吗？`, '删除地址', {
+      type: 'warning',
+      confirmButtonText: '删除',
+      cancelButtonText: '取消'
+    })
+  } catch {
+    return
+  }
+  deletingId.value = addr.id
+  try {
+    await deleteAddress(addr.id)
     await fetchAddresses()
     ElMessage.success('已删除')
   } catch { ElMessage.error('删除失败') }
+  finally { deletingId.value = null }
 }
 
 async function handleSetDefault(addr) {
@@ -215,12 +257,10 @@ async function handleSetDefault(addr) {
   margin-bottom: 12px;
   cursor: pointer;
   transition: all 0.2s ease;
-  user-select: none;
 }
 .address-card:hover {
   border-color: #c6e2ff;
   background: #fafcff;
-  user-select: none;
 }
 .address-card.is-selected {
   border-color: #409eff;

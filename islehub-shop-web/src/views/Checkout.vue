@@ -7,8 +7,8 @@
       <div v-else-if="addresses.length === 0">请先 <router-link to="/address">添加收货地址</router-link></div>
       <div class="address-list" v-else>
         <div class="address-card" v-for="addr in addresses" :key="addr.id"
-             :class="{ selected: selectedAddressId === addr.id }"
-             @click="selectedAddressId = addr.id">
+             :class="{ selected: selectedAddressId === addr.id, disabled: submitting }"
+             @click="selectAddress(addr.id)">
           <div><b>{{ addr.receiverName }}</b> {{ addr.receiverPhone }}</div>
           <div class="addr-detail">{{ addr.province }}{{ addr.city }}{{ addr.district }} {{ addr.detail }}</div>
         </div>
@@ -19,15 +19,25 @@
       <PageSkeleton v-if="loading" variant="checkout-items" :rows="2" />
       <template v-else>
         <div class="order-item" v-for="item in cartItems" :key="item.skuId">
-          <img v-if="item.productImage" :src="item.productImage" class="order-item-img" alt="" />
-          <span>{{ item.productName || '商品' }} / {{ item.skuSpec }} ×{{ item.quantity }}</span>
+          <div class="order-item-main">
+            <img
+              v-if="item.productImage && !item.imageFailed"
+              :src="item.productImage"
+              class="order-item-img"
+              :alt="item.productName || '商品图片'"
+              loading="lazy"
+              @error="item.imageFailed = true"
+            />
+            <span v-else class="order-item-placeholder">暂无图片</span>
+            <span>{{ item.productName || '商品' }} / {{ item.skuSpec }} ×{{ item.quantity }}</span>
+          </div>
           <span>¥{{ (item.price * item.quantity).toFixed(2) }}</span>
         </div>
       </template>
     </div>
     <div class="section" v-if="!loading">
       <div class="section-title">备注</div>
-      <el-input v-model="remark" placeholder="选填，如有特殊要求请备注" />
+      <el-input v-model="remark" :disabled="submitting" placeholder="选填，如有特殊要求请备注" />
     </div>
     <div class="checkout-footer" v-if="!loading">
       <span>应付: <b>¥{{ total.toFixed(2) }}</b></span>
@@ -41,7 +51,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage } from 'element-plus/es/components/message/index.mjs'
 import { addToCart, getCart, removeFromCart } from '../api/cart'
 import { getAddresses } from '../api/address'
 import { checkout } from '../api/order'
@@ -72,6 +82,11 @@ onMounted(async () => {
 
 const total = computed(() => cartItems.value.reduce((s, i) => s + i.price * i.quantity, 0))
 
+function selectAddress(id) {
+  if (submitting.value) return
+  selectedAddressId.value = id
+}
+
 async function loadSelectedCartItems() {
   try {
     const selectedSkuIds = readCheckoutSelectedSkuIds().map(String)
@@ -82,7 +97,7 @@ async function loadSelectedCartItems() {
     }
 
     const selectedSkuSet = new Set(selectedSkuIds)
-    allCartItems.value = (await getCart()).data || []
+    allCartItems.value = ((await getCart()).data || []).map(item => ({ ...item, imageFailed: false }))
     cartItems.value = allCartItems.value.filter(item => selectedSkuSet.has(String(item.skuId)))
 
     if (cartItems.value.length === 0) {
@@ -156,9 +171,12 @@ async function submitOrder() {
 .address-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
 .address-card { border: 2px solid #e4e7ed; border-radius: 8px; padding: 12px; cursor: pointer; }
 .address-card.selected { border-color: #409eff; background: #ecf5ff; }
+.address-card.disabled { cursor: not-allowed; opacity: .7; }
 .addr-detail { color: #999; font-size: 13px; margin-top: 4px; }
-.order-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+.order-item { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 8px 0; border-bottom: 1px solid #eee; }
+.order-item-main { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .order-item-img { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; }
+.order-item-placeholder { width: 50px; height: 50px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; background: #f5f7fa; border-radius: 4px; color: #bbb; font-size: 12px; }
 .checkout-footer { display: flex; justify-content: flex-end; align-items: center; gap: 20px; padding-top: 16px; border-top: 2px solid #eee; }
 .checkout-footer b { font-size: 22px; color: #e4393c; }
 .btn-submit { padding: 12px 32px; font-size: 16px; background: #e4393c; color: #fff; border: none; border-radius: 4px; cursor: pointer; }

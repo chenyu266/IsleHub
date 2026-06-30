@@ -19,9 +19,6 @@
           <span>¥{{ order.totalAmount }}</span>
           <span class="order-time">{{ order.createdAt }}</span>
         </div>
-        <div class="order-actions" v-if="order.status === 'shipped'" @click.stop>
-          <button class="btn-confirm" @click="doConfirm(order.id)">确认收货</button>
-        </div>
       </div>
     </template>
     <div class="pagination" v-if="total > pageSize">
@@ -34,8 +31,8 @@
 
 <script setup>
 import { ref, watch, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { pageOrders, confirmOrder } from '../api/order'
+import { ElMessage } from 'element-plus/es/components/message/index.mjs'
+import { pageOrders } from '../api/order'
 import PageSkeleton from '../components/PageSkeleton.vue'
 
 const orders = ref([])
@@ -63,19 +60,6 @@ async function fetchOrders() {
 function statusText(status) {
   return { paid: '已支付', shipped: '已发货', completed: '已完成', cancelled: '已取消' }[status] || status
 }
-
-async function doConfirm(id) {
-  try {
-    await ElMessageBox.confirm('确认已收到商品？', '确认收货', { type: 'success' })
-  } catch {
-    return // 用户取消
-  }
-  try {
-    await confirmOrder(id)
-    ElMessage.success('已确认收货')
-    fetchOrders()
-  } catch { ElMessage.error('确认失败') }
-}
 </script>
 
 <style scoped>
@@ -90,9 +74,6 @@ async function doConfirm(id) {
 .order-status { color: #409eff; }
 .order-body { display: flex; justify-content: space-between; font-size: 18px; color: #e4393c; font-weight: bold; }
 .order-time { font-size: 12px; color: #999; font-weight: normal; }
-.order-actions { display: flex; justify-content: flex-end; padding-top: 10px; border-top: 1px solid #f0f0f0; }
-.btn-confirm { padding: 6px 16px; font-size: 13px; background: #67c23a; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
-.btn-confirm:hover { background: #5daf34; }
 .empty { text-align: center; color: #999; padding: 60px 0; }
 .pagination { display: flex; justify-content: center; margin-top: 20px; }
 </style>

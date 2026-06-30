@@ -2,7 +2,13 @@
   <PageSkeleton v-if="loading" variant="product-detail" />
   <div class="product-detail" v-else-if="product">
     <div class="detail-image">
-      <img v-if="product.mainImage" :src="product.mainImage" alt="" />
+      <img
+        v-if="product.mainImage && !imageFailed"
+        :src="product.mainImage"
+        :alt="product.name || '商品图片'"
+        loading="lazy"
+        @error="imageFailed = true"
+      />
       <span v-else class="no-image">暂无图片</span>
     </div>
     <div class="detail-info">
@@ -35,8 +41,12 @@
         </div>
       </div>
       <div class="actions">
-        <button class="btn-cart" @click="addToCart">加入购物车</button>
-        <button class="btn-buy" @click="buyNow">立即购买</button>
+        <button class="btn-cart" :disabled="actionPending" @click="addToCart">
+          {{ addingToCart ? '加入中...' : '加入购物车' }}
+        </button>
+        <button class="btn-buy" :disabled="actionPending" @click="buyNow">
+          {{ buyingNow ? '处理中...' : '立即购买' }}
+        </button>
       </div>
       <div class="desc" v-if="product.description">
         <div class="section-title">商品详情</div>
@@ -49,7 +59,8 @@
 <script setup>
 import { computed, ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus/es/components/message/index.mjs'
+import { ElMessageBox } from 'element-plus/es/components/message-box/index.mjs'
 import { getProduct } from '../api/product'
 import { addToCart as addToCartApi } from '../api/cart'
 import PageSkeleton from '../components/PageSkeleton.vue'
@@ -62,6 +73,9 @@ const selectedSku = ref(null)
 const quantity = ref(1)
 const loading = ref(true)
 const stockWarningVisible = ref(false)
+const imageFailed = ref(false)
+const addingToCart = ref(false)
+const buyingNow = ref(false)
 
 onMounted(async () => {
   try {
@@ -79,6 +93,7 @@ const availableStock = computed(() => {
 const maxQuantity = computed(() => {
   return availableStock.value > 0 ? availableStock.value : 1
 })
+const actionPending = computed(() => addingToCart.value || buyingNow.value)
 
 watch(selectedSku, () => normalizeQuantity())
 
@@ -162,16 +177,30 @@ async function doAddToCart() {
   }
 }
 
-async function addToCart() { await doAddToCart() }
+async function addToCart() {
+  if (actionPending.value) return
+  addingToCart.value = true
+  try {
+    await doAddToCart()
+  } finally {
+    addingToCart.value = false
+  }
+}
 
 async function buyNow() {
-  const added = await doAddToCart()
-  if (added) router.push('/cart')
+  if (actionPending.value) return
+  buyingNow.value = true
+  try {
+    const added = await doAddToCart()
+    if (added) router.push('/cart')
+  } finally {
+    buyingNow.value = false
+  }
 }
 </script>
 
 <style scoped>
-.product-detail { display: flex; gap: 40px; background: #fff; padding: 30px; border-radius: 8px; user-select: none;}
+.product-detail { display: flex; gap: 40px; background: #fff; padding: 30px; border-radius: 8px; }
 .detail-image { width: 420px; height: 420px; display: flex; align-items: center; justify-content: center; background: #f5f7fa; border-radius: 8px; }
 .detail-image img { max-width: 100%; max-height: 100%; object-fit: contain; }
 .no-image { color: #ccc; font-size: 16px; }
@@ -187,6 +216,8 @@ async function buyNow() {
 .actions { display: flex; gap: 16px; margin-top: 30px; }
 .btn-cart { padding: 12px 30px; font-size: 16px; background: #409eff; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
 .btn-buy { padding: 12px 30px; font-size: 16px; background: #e4393c; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+.btn-cart:disabled,
+.btn-buy:disabled { background: #c0c4cc; cursor: not-allowed; }
 .desc { margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; }
 .desc p { color: #666; line-height: 1.8; }
 </style>

@@ -51,8 +51,15 @@
              @mouseenter="pauseBanner" @mouseleave="resumeBanner">
           <router-link :to="`/product/${currentRecommend.id}`" class="banner-inner">
             <div class="banner-bg">
-              <img :src="currentRecommend.mainImage || ''" alt=""
-                   @load="extractColor($event)" crossorigin="anonymous" />
+              <img
+                v-if="!currentRecommend.imageFailed"
+                :src="currentRecommend.mainImage || ''"
+                :alt="currentRecommend.name || '推荐商品'"
+                loading="lazy"
+                crossorigin="anonymous"
+                @load="extractColor($event)"
+                @error="handleBannerImageError"
+              />
             </div>
             <div class="banner-content">
               <p class="banner-cat">{{ currentRecommend.categoryName || '精选好物' }}</p>
@@ -144,7 +151,7 @@
 <script setup>
 import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage } from 'element-plus/es/components/message/index.mjs'
 import { pageProducts, getCategoryTree } from '../api/product'
 import { getAddresses } from '../api/address'
 import { getInfo } from '../api/auth'
@@ -171,24 +178,37 @@ const bannerBgColor = ref('#e2e8f0')
 const currentRecommend = computed(() => recommendList.value[currentIndex.value] || {})
 
 function extractColor(e) {
-  const img = e.target, canvas = document.createElement('canvas'), ctx = canvas.getContext('2d')
-  const size = 30; canvas.width = canvas.height = size
-  ctx.drawImage(img, 0, 0, size, size)
-  const d = ctx.getImageData(0, 0, size, size).data
-  let r=0,g=0,b=0,c=0; for(let i=0;i<d.length;i+=4){r+=d[i];g+=d[i+1];b+=d[i+2];c++}
-  r=Math.round(r/c); g=Math.round(g/c); b=Math.round(b/c)
-  const m=Math.max(r,g,b), l=(255-m)*0.5
-  r=Math.round((r+l)*0.82+255*0.18); g=Math.round((g+l)*0.82+255*0.18); b=Math.round((b+l)*0.82+255*0.18)
-  bannerBgColor.value=`rgb(${r},${g},${b})`
+  try {
+    const img = e.target, canvas = document.createElement('canvas'), ctx = canvas.getContext('2d')
+    const size = 30; canvas.width = canvas.height = size
+    ctx.drawImage(img, 0, 0, size, size)
+    const d = ctx.getImageData(0, 0, size, size).data
+    let r=0,g=0,b=0,c=0; for(let i=0;i<d.length;i+=4){r+=d[i];g+=d[i+1];b+=d[i+2];c++}
+    r=Math.round(r/c); g=Math.round(g/c); b=Math.round(b/c)
+    const m=Math.max(r,g,b), l=(255-m)*0.5
+    r=Math.round((r+l)*0.82+255*0.18); g=Math.round((g+l)*0.82+255*0.18); b=Math.round((b+l)*0.82+255*0.18)
+    bannerBgColor.value=`rgb(${r},${g},${b})`
+  } catch {
+    bannerBgColor.value = '#e2e8f0'
+  }
 }
 
-function shortName(name){ return name? (name.length>10? name.slice(0,10)+'…':name):'' }
+function handleBannerImageError() {
+  if (currentRecommend.value) currentRecommend.value.imageFailed = true
+  bannerBgColor.value = '#e2e8f0'
+}
 
-function startTimer(){ stopTimer(); timer=setInterval(()=>{ currentIndex.value=(currentIndex.value+1)%recommendList.value.length },INTERVAL) }
+function shortName(name){ return name? (name.length>18? name.slice(0,18)+'…':name):'' }
+
+function startTimer(){
+  stopTimer()
+  if (recommendList.value.length <= 1) return
+  timer=setInterval(()=>{ currentIndex.value=(currentIndex.value+1)%recommendList.value.length },INTERVAL)
+}
 function stopTimer(){ clearInterval(timer); timer=null }
 function pauseBanner(){ stopTimer() }
-function resumeBanner(){ startTimer() }
-function goToSlide(i){ currentIndex.value=i; stopTimer(); startTimer() }
+function resumeBanner(){ if (recommendList.value.length > 1) startTimer() }
+function goToSlide(i){ currentIndex.value=i; stopTimer(); resumeBanner() }
 
 async function fetchRecommends(){
   recommendLoading.value = true

@@ -6,7 +6,7 @@
   <div class="order-detail" v-else-if="order">
     <h2>订单详情</h2>
     <div class="info-row"><span>订单号</span><span>{{ order.orderNo }}</span></div>
-    <div class="info-row"><span>状态</span><span class="status">{{ order.status }}</span></div>
+    <div class="info-row"><span>状态</span><span class="status">{{ statusText(order.status) }}</span></div>
     <div class="info-row"><span>下单时间</span><span>{{ order.createdAt }}</span></div>
     <div class="info-row"><span>收货时间</span><span>{{ order.shipping?.deliveredAt || '未收货' }}</span></div>
     <div class="section">
@@ -28,24 +28,24 @@
       <div v-if="order.shipping.shippedAt">发货时间: {{ order.shipping.shippedAt }}</div>
       <div v-if="order.shipping.deliveredAt">签收时间: {{ order.shipping.deliveredAt }}</div>
     </div>
-    <div class="actions">
-      <el-button v-if="order.status === 'paid'" type="danger" @click="handleCancel">取消订单</el-button>
-      <el-button v-if="order.status === 'shipped'" type="primary" @click="handleConfirm">确认收货</el-button>
+    <div class="actions" v-if="order.status === 'paid'">
+      <el-button type="danger" :loading="cancelling" @click="handleCancel">取消订单</el-button>
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { getOrder, cancelOrder, confirmOrder } from '../api/order'
+import { useRoute } from 'vue-router'
+import { ElMessage } from 'element-plus/es/components/message/index.mjs'
+import { ElMessageBox } from 'element-plus/es/components/message-box/index.mjs'
+import { getOrder, cancelOrder } from '../api/order'
 import PageSkeleton from '../components/PageSkeleton.vue'
 
 const route = useRoute()
-const router = useRouter()
 const order = ref(null)
 const loading = ref(true)
+const cancelling = ref(false)
 
 onMounted(async () => {
   try {
@@ -58,25 +58,24 @@ onMounted(async () => {
   }
 })
 
+function statusText(status) {
+  return { paid: '已支付', shipped: '已发货', completed: '已完成', cancelled: '已取消' }[status] || status
+}
+
 async function handleCancel() {
+  if (cancelling.value) return
   try {
     await ElMessageBox.confirm('确定取消订单？', '确认')
   } catch {
     return // 用户取消
   }
+  cancelling.value = true
   try {
     await cancelOrder(order.value.id)
     ElMessage.success('已取消')
     order.value.status = 'cancelled'
   } catch { ElMessage.error('取消失败') }
-}
-
-async function handleConfirm() {
-  try {
-    await confirmOrder(order.value.id)
-    ElMessage.success('已确认收货')
-    order.value = (await getOrder(order.value.id)).data
-  } catch { ElMessage.error('确认失败') }
+  finally { cancelling.value = false }
 }
 </script>
 
