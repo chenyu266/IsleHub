@@ -8,4 +8,6 @@ public interface CategoryService extends IService<Category> {
     List<Category> getTree();
     List<Long> getCategoryAndChildrenIds(Long categoryId);
     List<Category> listLeaves();
+    Category getDefaultCategory();
+    List<Category> getShopTree();
 }

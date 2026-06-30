@@ -14,4 +14,14 @@ public interface ProductService extends IService<Product> {
     void updateStatus(Long id, Integer status);
     void batchUpdateStatus(List<Long> ids, Integer status);
     void deleteProduct(Long id);
+
+    // ---- SKU 查询（供跨模块调用） ----
+    /** 按 ID 查 SKU，返回 null 表示不存在 */
+    ProductSku getSkuById(Long id);
+
+    /** 恢复 SKU 库存（取消订单时调用） */
+    void addSkuStock(Long skuId, int quantity);
+
+    /** 批量按 productId 查 SKU */
+    List<ProductSku> getSkusByProductIds(List<Long> productIds);
 }

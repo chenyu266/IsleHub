@@ -17,12 +17,14 @@ CREATE TABLE IF NOT EXISTS `user` (
 );
 
 CREATE TABLE IF NOT EXISTS `category` (
-   `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
-   `name` VARCHAR(100) NOT NULL,
-   `parent_id` BIGINT NOT NULL DEFAULT 0,
-   `level` TINYINT NOT NULL DEFAULT 0 COMMENT '1=一级 2=二级 3=三级',
-   INDEX `idx_category_parent` (`parent_id`, `level`),
-   INDEX `idx_category_level` (`level`)
+  `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+  `name` VARCHAR(100) NOT NULL,
+  `parent_id` BIGINT NOT NULL DEFAULT 0,
+  `level` TINYINT NOT NULL DEFAULT 0 COMMENT '1=一级 2=二级 3=三级',
+  `is_default` TINYINT NOT NULL DEFAULT 0 COMMENT '0=普通 1=默认分类',
+  INDEX `idx_category_parent` (`parent_id`, `level`),
+  INDEX `idx_category_level` (`level`),
+  INDEX `idx_category_default` (`is_default`)
 );
 
 
@@ -90,6 +92,19 @@ CREATE TABLE IF NOT EXISTS `order_shipping` (
     `delivered_at` DATETIME,
     UNIQUE INDEX `uk_shipping_order` (`order_id`)
 );
+
+CREATE TABLE IF NOT EXISTS `order_message` (
+     `id`           BIGINT AUTO_INCREMENT PRIMARY KEY,
+     `order_id`     BIGINT       NOT NULL,
+     `message_body` TEXT         NOT NULL,
+     `status`       TINYINT      NOT NULL DEFAULT 0 COMMENT '0-待发送 1-已发送 2-发送失败',
+     `retry_count`  INT          NOT NULL DEFAULT 0,
+     `error_msg`    VARCHAR(500),
+     `created_at`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+     `updated_at`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+     INDEX `idx_status` (`status`),
+     INDEX `idx_created_at` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单消息表（可靠消息）';
 
 CREATE TABLE IF NOT EXISTS `address` (
     `id` BIGINT AUTO_INCREMENT PRIMARY KEY,

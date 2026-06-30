@@ -30,5 +30,5 @@ Thumbs.db
 
 # Environment
 .env
-islehub-server/src/main/resources/db/env.properties
+.env.properties
 .reasonix/

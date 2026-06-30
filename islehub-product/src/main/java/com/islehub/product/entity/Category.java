@@ -15,6 +15,7 @@ public class Category {
     private String name;
 
     private Long parentId;
+    private Integer isDefault;
 
     private Integer level;
 

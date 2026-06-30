@@ -151,16 +151,23 @@ public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category> i
             return false;
         }
 
+        // 默认分类不能删
+        if (Integer.valueOf(1).equals(category.getIsDefault())) {
+            throw new BizException("默认分类不能删除");
+        }
+
+        // 有子分类不能删
         long childCount = baseMapper.selectCount(
                 new LambdaQueryWrapper<Category>().eq(Category::getParentId, category.getId()));
         if (childCount > 0) {
             throw new BizException("该分类下存在子分类，无法删除");
         }
 
-        // 删除前把关联商品 category_id 置 0
+        // 把该分类下的商品迁移到默认分类
+        Category defaultCat = getDefaultCategory();
         productMapper.update(null,
                 new LambdaUpdateWrapper<Product>()
-                        .set(Product::getCategoryId, 0L)
+                        .set(Product::getCategoryId, defaultCat.getId())
                         .eq(Product::getCategoryId, category.getId()));
 
         boolean result = super.removeById(id);
@@ -214,6 +221,24 @@ public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category> i
             }
             pid = p.getParentId();
         }
+    }
+
+    @Override
+    public Category getDefaultCategory() {
+        Category def = baseMapper.selectOne(
+                new LambdaQueryWrapper<Category>().eq(Category::getIsDefault, 1));
+        if (def == null) {
+            throw new BizException("默认分类不存在，请联系管理员");
+        }
+        return def;
+    }
+
+    @Override
+    public List<Category> getShopTree() {
+        List<Category> tree = getTree();
+        return tree.stream()
+                .filter(c -> !Integer.valueOf(1).equals(c.getIsDefault()))
+                .collect(Collectors.toList());
     }
 
 

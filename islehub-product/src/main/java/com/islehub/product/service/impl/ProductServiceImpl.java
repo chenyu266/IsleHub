@@ -5,6 +5,8 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.islehub.common.exception.BizException;
+import com.islehub.common.redis.CacheService;
+import com.islehub.common.redis.RedisKeys;
 import com.islehub.product.entity.Category;
 import com.islehub.product.entity.Product;
 import com.islehub.product.entity.ProductSku;
@@ -37,11 +39,14 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
     private final ProductSkuMapper skuMapper;
     private final CategoryService categoryService;
     private final StockCacheService stockCacheService;
+    private final CacheService cacheService;
 
-    public ProductServiceImpl(ProductSkuMapper skuMapper, CategoryService categoryService, StockCacheService stockCacheService) {
+    public ProductServiceImpl(ProductSkuMapper skuMapper, CategoryService categoryService,
+                              StockCacheService stockCacheService, CacheService cacheService) {
         this.skuMapper = skuMapper;
         this.categoryService = categoryService;
         this.stockCacheService = stockCacheService;
+        this.cacheService = cacheService;
     }
 
     @Override
@@ -69,7 +74,10 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
 
     @Override
     public Product getDetail(Long id) {
-        Product product = baseMapper.selectDetailById(id);
+        String key = RedisKeys.productDetail(id);
+        Product product = cacheService.getOrLoad(key, Product.class, RedisKeys.PRODUCT_DETAIL_TTL, () -> {
+            return baseMapper.selectDetailById(id);
+        });
         if (product == null) {
             throw new BizException("商品不存在");
         }
@@ -79,6 +87,9 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
     @Override
     @Transactional
     public void addProduct(Product product, List<ProductSku> skus) {
+        if (product.getCategoryId() == null || product.getCategoryId() <= 0) {
+            product.setCategoryId(categoryService.getDefaultCategory().getId());
+        }
         validateCategory(product.getCategoryId());
         save(product);
         skus.forEach(s -> s.setProductId(product.getId()));
@@ -88,10 +99,14 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
     @Override
     @Transactional
     public void updateProduct(Product product, List<ProductSku> skus) {
+        if (product.getCategoryId() == null || product.getCategoryId() <= 0) {
+            product.setCategoryId(categoryService.getDefaultCategory().getId());
+        }
         validateCategory(product.getCategoryId());
         Product oldProduct = getById(product.getId());
         updateById(product);
         Long productId = product.getId();
+
         Set<Long> keepIds = skus.stream()
                 .map(ProductSku::getId).filter(id -> id != null).collect(Collectors.toSet());
         if (!keepIds.isEmpty()) {
@@ -111,10 +126,14 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
                 skuMapper.insert(s);
             }
         }
+
         // 清理被移除或替换的旧图片
         if (oldProduct != null) {
             deleteOrphanImages(oldProduct, product);
         }
+
+        // 更新后失效详情缓存
+        cacheService.evict(RedisKeys.productDetail(productId));
     }
 
     @Override
@@ -123,6 +142,8 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
         product.setId(id);
         product.setStatus(status);
         updateById(product);
+
+        cacheService.evict(RedisKeys.productDetail(id));
     }
 
     @Override
@@ -131,6 +152,9 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
         update(new LambdaUpdateWrapper<Product>()
                 .set(Product::getStatus, status)
                 .in(Product::getId, ids));
+
+        String[] keys = ids.stream().map(RedisKeys::productDetail).toArray(String[]::new);
+        cacheService.evict(keys);
     }
 
     @Override
@@ -142,11 +166,13 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
         }
         removeById(id);
         deleteImageFiles(product);
+
+        // 删除后失效详情缓存
+        cacheService.evict(RedisKeys.productDetail(id));
     }
 
-    // ──────────────── image cleanup ────────────────
+    // ──────────────── 图片清理 ────────────────
 
-    /** 删除商品的所有图片。 */
     private void deleteImageFiles(Product product) {
         File baseDir = resolveUploadDir();
         deleteFile(baseDir, product.getMainImage());
@@ -158,9 +184,6 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
         }
     }
 
-    /**
-     * 比较新旧商品图片，删除被移除或替换的旧图片。
-     */
     private void deleteOrphanImages(Product oldProduct, Product newProduct) {
         File baseDir = resolveUploadDir();
 
@@ -193,7 +216,6 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
     private void deleteFile(File baseDir, String url) {
         if (url == null || url.isBlank()) return;
         try {
-            // URL 格式: /uploads/products/xxx.jpg → 提取文件名
             String filename = url.substring(url.lastIndexOf('/') + 1);
             Path filePath = Paths.get(baseDir.getAbsolutePath(), "products", filename);
             File file = filePath.toFile();
@@ -224,9 +246,26 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
         if (category == null) {
             throw new BizException("商品分类不存在");
         }
-        // 如果已做三级分类改造，限制商品只能挂到三级
-        if (category.getLevel() != null && category.getLevel() != 3) {
+        boolean isDefault = Integer.valueOf(1).equals(category.getIsDefault());
+        if (!isDefault && category.getLevel() != 3) {
             throw new BizException("商品只能关联到三级分类");
         }
+    }
+
+    // ──────────────── 跨模块 SKU 操作 ────────────────
+
+    @Override
+    public ProductSku getSkuById(Long id) {
+        return skuMapper.selectById(id);
+    }
+
+    @Override
+    public void addSkuStock(Long skuId, int quantity) {
+        skuMapper.addStock(skuId, quantity);
+    }
+
+    @Override
+    public List<ProductSku> getSkusByProductIds(List<Long> productIds) {
+        return skuMapper.selectByProductIds(productIds);
     }
 }

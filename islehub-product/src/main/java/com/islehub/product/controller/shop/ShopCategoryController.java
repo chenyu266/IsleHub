@@ -17,6 +17,8 @@ public class ShopCategoryController {
 
     @GetMapping("/tree")
     public Result<List<Category>> tree() {
-        return Result.ok(categoryService.getTree());
+        return Result.ok(categoryService.getShopTree());
     }
+
+
 }

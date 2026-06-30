@@ -1,38 +1,45 @@
 package com.islehub.order.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.islehub.common.exception.BizException;
 import com.islehub.common.mq.OrderCreatedEvent;
 import com.islehub.order.entity.Order;
 import com.islehub.order.entity.OrderItem;
+import com.islehub.order.entity.OrderMessage;
 import com.islehub.order.mapper.OrderItemMapper;
 import com.islehub.order.mapper.OrderMapper;
+import com.islehub.order.mapper.OrderMessageMapper;
 import com.islehub.product.entity.ProductSku;
-import com.islehub.product.mapper.ProductSkuMapper;
+import com.islehub.product.service.ProductService;
 import com.islehub.product.service.StockCacheService;
 import lombok.Data;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * C 端下单编排 —— 接收已解析的购物车数据和地址信息，执行下单事务。
- */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CheckoutService {
 
     private final OrderMapper orderMapper;
     private final OrderItemMapper itemMapper;
-    private final ProductSkuMapper skuMapper;
+    private final OrderMessageMapper orderMessageMapper;
+    private final ProductService productService;
     private final StockCacheService stockCacheService;
     private final RabbitTemplate rabbitTemplate;
+    private final ObjectMapper objectMapper;
 
     @Transactional
     public CheckoutResult checkout(Long userId, String receiverName, String receiverPhone,
@@ -52,7 +59,7 @@ public class CheckoutService {
         List<OrderItem> orderItems = new ArrayList<>();
         BigDecimal total = BigDecimal.ZERO;
         for (CheckoutItem ci : items) {
-            ProductSku sku = skuMapper.selectById(ci.getSkuId());
+            ProductSku sku = productService.getSkuById(ci.getSkuId());
             if (sku == null) {
                 throw new BizException("商品 " + ci.getProductName() + " 不存在");
             }
@@ -71,7 +78,7 @@ public class CheckoutService {
             total = total.add(ci.getPrice().multiply(BigDecimal.valueOf(ci.getQuantity())));
         }
 
-        // ③ DB 创建订单（失败则回滚 Redis 库存）
+        // ③ DB 创建订单
         Order order = new Order();
         order.setOrderNo(UUID.randomUUID().toString().replace("-", "").substring(0, 16));
         order.setUserId(userId);
@@ -88,20 +95,77 @@ public class CheckoutService {
                 item.setOrderId(order.getId());
                 itemMapper.insert(item);
             }
+
+            // ④ 在事务内写入本地消息表
+            OrderCreatedEvent event = new OrderCreatedEvent();
+            event.setOrderId(order.getId());
+            event.setItems(orderItems.stream()
+                    .map(i -> new OrderCreatedEvent.OrderItemStock(i.getSkuId(), i.getQuantity()))
+                    .toList());
+
+            OrderMessage orderMessage = new OrderMessage();
+            orderMessage.setOrderId(order.getId());
+            orderMessage.setMessageBody(objectMapper.writeValueAsString(event));
+            orderMessage.setStatus(0);
+            orderMessage.setRetryCount(0);
+            orderMessage.setCreatedAt(LocalDateTime.now());
+            orderMessage.setUpdatedAt(LocalDateTime.now());
+            orderMessageMapper.insert(orderMessage);
+
         } catch (Exception e) {
             stockCacheService.rollback(skuIds, quantities);
-            throw e;
+            throw new BizException("订单创建失败：" + e.getMessage());
         }
 
-        // ④ 发送 MQ 消息（异步落库确认）
-        OrderCreatedEvent event = new OrderCreatedEvent();
-        event.setOrderId(order.getId());
-        event.setItems(orderItems.stream()
-                .map(i -> new OrderCreatedEvent.OrderItemStock(i.getSkuId(), i.getQuantity()))
-                .toList());
-        rabbitTemplate.convertAndSend("islehub.order.topic", "order.stock.confirm", event);
+        // ⑤ 事务提交后再发 MQ
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                sendOrderMessage(order.getId());
+            }
+        });
 
         return new CheckoutResult(order, warnings);
+    }
+    /**
+     * 发送订单消息（供事务提交后回调和定时任务调用）
+     */
+    public void sendOrderMessage(Long orderId) {
+        // 查询待发送的消息
+        OrderMessage message = orderMessageMapper.selectOne(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<OrderMessage>()
+                        .eq(OrderMessage::getOrderId, orderId)
+                        .eq(OrderMessage::getStatus, 0)
+        );
+
+        if (message == null) {
+            log.warn("订单消息不存在或已发送, orderId={}", orderId);
+            return;
+        }
+
+        try {
+            // 发送 MQ
+            OrderCreatedEvent event = objectMapper.readValue(message.getMessageBody(), OrderCreatedEvent.class);
+            rabbitTemplate.convertAndSend("islehub.order.topic", "order.stock.confirm", event);
+
+            // 发送成功，更新状态为"已发送"
+            message.setStatus(1);
+            message.setUpdatedAt(LocalDateTime.now());
+            orderMessageMapper.updateById(message);
+
+            log.info("订单消息发送成功, orderId={}", orderId);
+        } catch (Exception e) {
+            log.error("订单消息发送失败, orderId={}", orderId, e);
+
+            // 发送失败，更新重试次数和状态
+            message.setRetryCount(message.getRetryCount() + 1);
+            message.setErrorMsg(e.getMessage());
+            if (message.getRetryCount() >= 3) {
+                message.setStatus(2);  // 发送失败，需要人工介入
+            }
+            message.setUpdatedAt(LocalDateTime.now());
+            orderMessageMapper.updateById(message);
+        }
     }
 
     // ──────────────── DTO / Result ────────────────
@@ -127,3 +191,4 @@ public class CheckoutService {
         }
     }
 }
+

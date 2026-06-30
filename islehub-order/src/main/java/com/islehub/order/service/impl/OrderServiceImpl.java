@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.islehub.common.exception.BizException;
+import com.islehub.common.redis.CacheService;
+import com.islehub.common.redis.RedisKeys;
 import com.islehub.order.entity.Order;
 import com.islehub.order.entity.OrderItem;
 import com.islehub.order.entity.OrderShipping;
@@ -11,8 +13,7 @@ import com.islehub.order.mapper.OrderItemMapper;
 import com.islehub.order.mapper.OrderMapper;
 import com.islehub.order.mapper.OrderShippingMapper;
 import com.islehub.order.service.OrderService;
-import com.islehub.product.mapper.ProductSkuMapper;
-import com.islehub.product.service.StockCacheService;
+import com.islehub.product.service.ProductService;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
@@ -20,6 +21,7 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+
 import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -41,8 +43,8 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
 
     private final OrderItemMapper itemMapper;
     private final OrderShippingMapper shippingMapper;
-    private final ProductSkuMapper skuMapper;
-    private final StockCacheService stockCacheService;
+    private final ProductService productService;
+    private final CacheService cacheService;
 
     @Override
     public Page<Order> pageOrders(int page, int pageSize, String orderNo, String status,
@@ -55,7 +57,10 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
 
     @Override
     public Order getDetail(Long id) {
-        Order order = baseMapper.selectDetailById(id);
+        String key = RedisKeys.orderDetail(id);
+        Order order = cacheService.getOrLoad(key, Order.class, RedisKeys.ORDER_DETAIL_TTL, () -> {
+            return baseMapper.selectDetailById(id);
+        });
         if (order == null) {
             throw new BizException("订单不存在");
         }
@@ -74,6 +79,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         save(order);
         items.forEach(i -> i.setOrderId(order.getId()));
         items.forEach(itemMapper::insert);
+        // 新订单无需失效缓存
     }
 
     @Override
@@ -97,12 +103,16 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
                 shippingMapper.updateById(shipping);
             }
         }
+
+        // 状态变更后失效缓存
+        cacheService.evict(RedisKeys.orderDetail(id));
     }
 
     @Override
     @Transactional
     public void cancelOrder(Long id) {
         updateStatus(id, "cancelled");
+        // updateStatus 内部已失效缓存
     }
 
     @Override
@@ -111,6 +121,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         shipping.setShippedAt(LocalDateTime.now());
         shippingMapper.insert(shipping);
         updateStatus(shipping.getOrderId(), "shipped");
+        // updateStatus 内部已失效缓存
     }
 
     @Override
@@ -168,8 +179,9 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
 
     @Override
     public Order getUserOrderDetail(Long id, Long userId) {
-        Order order = baseMapper.selectDetailById(id);
-        if (order == null || !order.getUserId().equals(userId)) {
+        // 复用 getDetail（已走缓存），再做用户权限校验
+        Order order = getDetail(id);
+        if (!order.getUserId().equals(userId)) {
             throw new BizException("订单不存在");
         }
         return order;
@@ -187,17 +199,14 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         }
         order.setStatus("cancelled");
         updateById(order);
+        cacheService.evict(RedisKeys.orderDetail(id));
 
         // 恢复 DB 库存
         List<OrderItem> items = itemMapper.selectList(
                 new LambdaQueryWrapper<OrderItem>().eq(OrderItem::getOrderId, id));
         for (OrderItem item : items) {
-            skuMapper.addStock(item.getSkuId(), item.getQuantity());
+            productService.addSkuStock(item.getSkuId(), item.getQuantity());
         }
-        // 同步恢复 Redis 缓存库存（仅当 key 存在时）
-        stockCacheService.restoreIfPresent(
-                items.stream().map(OrderItem::getSkuId).toList(),
-                items.stream().map(OrderItem::getQuantity).toList());
     }
 
     @Override
@@ -212,6 +221,10 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         }
         order.setStatus("completed");
         updateById(order);
+
+        // 失效缓存
+        cacheService.evict(RedisKeys.orderDetail(id));
+
         OrderShipping shipping = shippingMapper.selectOne(
                 new LambdaQueryWrapper<OrderShipping>().eq(OrderShipping::getOrderId, id));
         if (shipping != null) {

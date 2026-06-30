@@ -3,9 +3,9 @@ package com.islehub.shop.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.islehub.common.exception.BizException;
-import com.islehub.product.entity.ProductSku;
-import com.islehub.product.mapper.ProductMapper;
-import com.islehub.product.mapper.ProductSkuMapper;
+import com.islehub.product.entity.Product;          // ← 替换 ProductMapper
+import com.islehub.product.entity.ProductSku;       // 仍需 entity
+import com.islehub.product.service.ProductService;
 import lombok.Data;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -24,8 +24,8 @@ import java.util.Map;
 public class CartService {
 
     private final StringRedisTemplate redisTemplate;
-    private final ProductSkuMapper skuMapper;
-    private final ProductMapper productMapper;
+    private final ProductService productService;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
@@ -82,11 +82,11 @@ public class CartService {
     }
 
     public void add(Long userId, Long skuId, Integer quantity) {
-        ProductSku sku = skuMapper.selectById(skuId);
+        ProductSku sku = productService.getSkuById(skuId);
         if (sku == null || sku.getStatus() == 0 || sku.getStock() <= 0) {
             throw new BizException("SKU 不存在、已下架或库存不足");
         }
-        com.islehub.product.entity.Product product = productMapper.selectById(sku.getProductId());
+        Product product = productService.getById(sku.getProductId());
         String cartKey = key(userId);
         String field = skuId.toString();
         for (int retry = 0; retry < 3; retry++) {

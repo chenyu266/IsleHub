@@ -15,6 +15,11 @@ public final class RedisKeys {
     public static final Duration LOGIN_FAIL_WINDOW = Duration.ofMinutes(2);
     public static final Duration LOGIN_LOCK_TTL = Duration.ofMinutes(2);
 
+    // 商品详情缓存：30 分钟
+    public static final Duration PRODUCT_DETAIL_TTL = Duration.ofMinutes(30);
+    // 订单详情缓存：10 分钟
+    public static final Duration ORDER_DETAIL_TTL = Duration.ofMinutes(10);
+
     // ---- Key 生成 ----
     public static String emailVerifyCode(String email) {
         return PREFIX + ":verify:email:" + email;
@@ -39,5 +44,13 @@ public final class RedisKeys {
 
     public static String emailChangeNewCode(String email) {
         return PREFIX + ":email:change:newcode:" + email;
+    }
+
+    public static String productDetail(Long id) {
+        return PREFIX + ":product:detail:" + id;
+    }
+
+    public static String orderDetail(Long id) {
+        return PREFIX + ":order:detail:" + id;
     }
 }
