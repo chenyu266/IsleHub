@@ -5,22 +5,25 @@
     </el-card>
 
     <el-card style="margin-top:15px">
-      <el-table :data="treeData" border stripe row-key="id" default-expand-all v-loading="loading">
-        <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="name" label="分类名称" />
-        <el-table-column prop="sortOrder" label="排序" width="80" />
-        <el-table-column label="操作" width="200">
-          <template #default="{ row }">
-            <el-button type="primary" size="small" @click="openAdd(row)">添加子级</el-button>
-            <el-button size="small" @click="openEdit(row)">编辑</el-button>
-            <el-popconfirm title="删除分类会同时删除子分类，确定吗？" @confirm="handleDelete(row.id)">
-              <template #reference>
-                <el-button type="danger" size="small">删除</el-button>
-              </template>
-            </el-popconfirm>
-          </template>
-        </el-table-column>
-      </el-table>
+      <div class="cat-tree" v-loading="loading">
+        <!-- 表头 -->
+        <div class="cat-tree__header">
+          <span class="cat-tree__header-name">分类名称</span>
+          <span class="cat-col cat-col--id">ID</span>
+          <span class="cat-col cat-col--sort">排序</span>
+          <span class="cat-col cat-col--actions">操作</span>
+        </div>
+        <!-- 树体 -->
+        <div class="cat-tree__body">
+          <CategoryTreeNode
+            v-for="(node, i) in treeData"
+            :key="node.id"
+            :node="node"
+            :depth="0"
+            :is-last="i == treeData.length - 1"
+          />
+        </div>
+      </div>
     </el-card>
 
     <el-dialog :title="dialogTitle" v-model="dialogVisible" width="400px">
@@ -41,9 +44,10 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, provide } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getCategoryTree, addCategory, updateCategory, deleteCategory } from '../../api/product'
+import CategoryTreeNode from './CategoryTreeNode.vue'
 
 const treeData = ref([])
 const loading = ref(false)
@@ -51,6 +55,13 @@ const dialogVisible = ref(false)
 const isEdit = ref(false)
 const dialogTitle = ref('')
 const form = ref({ id: null, name: '', parentId: 0, sortOrder: 0 })
+
+// 通过 provide/inject 把操作方法下发给递归节点
+provide('categoryActions', {
+  add: (node) => openAdd(node),
+  edit: (node) => openEdit(node),
+  del: (id) => handleDelete(id)
+})
 
 async function fetchData() {
   loading.value = true
@@ -95,3 +106,62 @@ async function handleDelete(id) {
 
 fetchData()
 </script>
+
+<style scoped>
+/* ---------- 树容器 ---------- */
+.cat-tree {
+  --cat-gap: 10px;                 /* 父子分组行间留白，被节点继承 */
+  --cat-col-id: 64px;
+  --cat-col-sort: 70px;
+  --cat-col-actions: 240px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 4px;
+  overflow: visible;
+}
+
+/* ---------- 表头 ---------- */
+.cat-tree__header {
+  display: flex;
+  align-items: center;
+  min-height: 42px;
+  padding: 8px 12px;
+  background-color: var(--el-fill-color-light);
+  border-bottom: 1px solid var(--el-border-color);
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
+}
+.cat-tree__header-name {
+  flex: 1;
+  margin-left: 20px;   /* 与节点 toggle 占位对齐 */
+}
+
+/* ---------- 树体：顶层节点之间同样留白，区分不同父级子列表 ---------- */
+.cat-tree__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cat-gap);
+  overflow: visible;
+}
+
+/* 让表头固定列宽与节点保持一致 */
+.cat-col {
+  flex-shrink: 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--el-text-color-regular);
+}
+.cat-col--id {
+  width: var(--cat-col-id);
+}
+.cat-col--sort {
+  width: var(--cat-col-sort);
+}
+.cat-col--actions {
+  width: var(--cat-col-actions);
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+}
+</style>

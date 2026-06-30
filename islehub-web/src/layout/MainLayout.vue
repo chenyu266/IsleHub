@@ -7,6 +7,7 @@
           mode="horizontal"
           :default-active="activeTopMenu"
           @select="handleTopSelect"
+          :ellipsis="false"
           class="top-menu"
         >
           <el-menu-item index="dashboard">仪表盘</el-menu-item>
@@ -16,7 +17,7 @@
         </el-menu>
       </div>
       <div class="header-right">
-        <span>{{ userInfo?.realName }}</span>
+        <span>{{ userInfo && userInfo.realName }}</span>
         <el-button type="danger" text @click="logout">退出</el-button>
       </div>
     </el-header>
@@ -24,24 +25,29 @@
     <el-container>
       <el-aside width="200px" class="sidebar">
         <el-menu :default-active="activeSideMenu" @select="handleSideSelect">
-          <template v-if="activeTopMenu === 'dashboard'">
+          <template v-if="activeTopMenu == 'dashboard'">
             <el-menu-item index="/dashboard">工作台</el-menu-item>
           </template>
-          <template v-if="activeTopMenu === 'user'">
+          <template v-if="activeTopMenu == 'user'">
             <el-menu-item index="/user">用户列表</el-menu-item>
           </template>
-          <template v-if="activeTopMenu === 'product'">
+          <template v-if="activeTopMenu == 'product'">
             <el-menu-item index="/product">商品列表</el-menu-item>
             <el-menu-item index="/product/category">分类管理</el-menu-item>
           </template>
-          <template v-if="activeTopMenu === 'order'">
+          <template v-if="activeTopMenu == 'order'">
             <el-menu-item index="/order">订单列表</el-menu-item>
           </template>
         </el-menu>
       </el-aside>
 
       <el-main>
-        <router-view />
+        <!-- 顶部 Tab 切换：router-view 包裹 transition，内容淡入淡出；激活高亮保留原样式不换色 -->
+        <router-view v-slot="{ Component, route }">
+          <transition name="page-fade" mode="out-in">
+            <component :is="Component" :key="route.path" />
+          </transition>
+        </router-view>
       </el-main>
     </el-container>
   </el-container>
@@ -97,4 +103,19 @@ onMounted(fetchInfo)
 .top-menu { border-bottom: none !important; }
 .header-right { display: flex; align-items: center; gap: 15px; }
 .sidebar { background: #fafafa; border-right: 1px solid #e4e7ed; }
+
+/* 侧边菜单项：hover 底色淡入过渡（底色沿用 EP 默认，仅加平滑过渡） */
+.sidebar :deep(.el-menu-item) {
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+/* 顶部 Tab 切换：内容区淡入淡出动画 */
+.page-fade-enter-active,
+.page-fade-leave-active {
+  transition: opacity 0.25s ease;
+}
+.page-fade-enter-from,
+.page-fade-leave-to {
+  opacity: 0;
+}
 </style>
