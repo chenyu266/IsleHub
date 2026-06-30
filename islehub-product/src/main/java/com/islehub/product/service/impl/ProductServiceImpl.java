@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.islehub.common.exception.BizException;
+import com.islehub.product.entity.Category;
 import com.islehub.product.entity.Product;
 import com.islehub.product.entity.ProductSku;
 import com.islehub.product.mapper.ProductMapper;
@@ -29,11 +30,9 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
         this.categoryService = categoryService;
     }
 
-
     @Override
     public Page<Product> pageProducts(int page, int pageSize, String keyword, Long categoryId, Integer status) {
         List<Long> categoryIds = categoryService.getCategoryAndChildrenIds(categoryId);
-
 
         Page<Product> result;
         if (categoryIds.isEmpty()) {
@@ -66,6 +65,7 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
     @Override
     @Transactional
     public void addProduct(Product product, List<ProductSku> skus) {
+        validateCategory(product.getCategoryId());
         save(product);
         skus.forEach(s -> s.setProductId(product.getId()));
         skus.forEach(skuMapper::insert);
@@ -74,6 +74,7 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
     @Override
     @Transactional
     public void updateProduct(Product product, List<ProductSku> skus) {
+        validateCategory(product.getCategoryId());
         updateById(product);
         Long productId = product.getId();
         Set<Long> keepIds = skus.stream()
@@ -110,5 +111,19 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
         update(new LambdaUpdateWrapper<Product>()
                 .set(Product::getStatus, status)
                 .in(Product::getId, ids));
+    }
+
+    private void validateCategory(Long categoryId) {
+        if (categoryId == null || categoryId <= 0) {
+            throw new BizException("请选择商品分类");
+        }
+        Category category = categoryService.getById(categoryId);
+        if (category == null) {
+            throw new BizException("商品分类不存在");
+        }
+        // 如果已做三级分类改造，限制商品只能挂到三级
+        if (category.getLevel() != null && category.getLevel() != 3) {
+            throw new BizException("商品只能关联到三级分类");
+        }
     }
 }

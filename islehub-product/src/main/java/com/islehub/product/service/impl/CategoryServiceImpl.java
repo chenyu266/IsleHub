@@ -1,6 +1,7 @@
 package com.islehub.product.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -156,11 +157,11 @@ public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category> i
             throw new BizException("该分类下存在子分类，无法删除");
         }
 
-        long productCount = productMapper.selectCount(
-                new LambdaQueryWrapper<Product>().eq(Product::getCategoryId, category.getId()));
-        if (productCount > 0) {
-            throw new BizException("该分类下存在商品，无法删除");
-        }
+        // 删除前把关联商品 category_id 置 0
+        productMapper.update(null,
+                new LambdaUpdateWrapper<Product>()
+                        .set(Product::getCategoryId, 0L)
+                        .eq(Product::getCategoryId, category.getId()));
 
         boolean result = super.removeById(id);
         redisTemplate.delete(CACHE_KEY);
