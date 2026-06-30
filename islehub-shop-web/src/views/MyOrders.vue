@@ -7,20 +7,23 @@
       <span :class="{ active: currentStatus === 'shipped' }" @click="currentStatus = 'shipped'">已发货</span>
       <span :class="{ active: currentStatus === 'completed' }" @click="currentStatus = 'completed'">已完成</span>
     </div>
-    <div v-if="orders.length === 0" class="empty">暂无订单</div>
-    <div class="order-item" v-for="order in orders" :key="order.id" @click="$router.push(`/order/${order.id}`)">
-      <div class="order-header">
-        <span>订单号: {{ order.orderNo }}</span>
-        <span class="order-status">{{ statusText(order.status) }}</span>
+    <PageSkeleton v-if="loading" variant="order-list" :rows="4" class="inline-skeleton" />
+    <div v-else-if="orders.length === 0" class="empty">暂无订单</div>
+    <template v-else>
+      <div class="order-item" v-for="order in orders" :key="order.id" @click="$router.push(`/order/${order.id}`)">
+        <div class="order-header">
+          <span>订单号: {{ order.orderNo }}</span>
+          <span class="order-status">{{ statusText(order.status) }}</span>
+        </div>
+        <div class="order-body">
+          <span>¥{{ order.totalAmount }}</span>
+          <span class="order-time">{{ order.createdAt }}</span>
+        </div>
+        <div class="order-actions" v-if="order.status === 'shipped'" @click.stop>
+          <button class="btn-confirm" @click="doConfirm(order.id)">确认收货</button>
+        </div>
       </div>
-      <div class="order-body">
-        <span>¥{{ order.totalAmount }}</span>
-        <span class="order-time">{{ order.createdAt }}</span>
-      </div>
-      <div class="order-actions" v-if="order.status === 'shipped'" @click.stop>
-        <button class="btn-confirm" @click="doConfirm(order.id)">确认收货</button>
-      </div>
-    </div>
+    </template>
     <div class="pagination" v-if="total > pageSize">
       <el-pagination background layout="prev, pager, next"
         :total="total" :page-size="pageSize" v-model:current-page="pageNum"
@@ -33,17 +36,20 @@
 import { ref, watch, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { pageOrders, confirmOrder } from '../api/order'
+import PageSkeleton from '../components/PageSkeleton.vue'
 
 const orders = ref([])
 const currentStatus = ref(null)
 const pageNum = ref(1)
 const total = ref(0)
 const pageSize = 20
+const loading = ref(true)
 
 onMounted(fetchOrders)
 watch(currentStatus, () => { pageNum.value = 1; fetchOrders() })
 
 async function fetchOrders() {
+  loading.value = true
   try {
     const params = { page: pageNum.value, pageSize }
     if (currentStatus.value) params.status = currentStatus.value
@@ -51,6 +57,7 @@ async function fetchOrders() {
     orders.value = res.data.records
     total.value = res.data.total
   } catch { ElMessage.error('加载订单失败') }
+  finally { loading.value = false }
 }
 
 function statusText(status) {
@@ -74,6 +81,7 @@ async function doConfirm(id) {
 <style scoped>
 .orders-page { background: #fff; padding: 30px; border-radius: 8px; }
 .orders-page h2 { margin-bottom: 20px; }
+.inline-skeleton { padding: 0; }
 .status-tabs { display: flex; gap: 20px; margin-bottom: 20px; }
 .status-tabs span { cursor: pointer; color: #666; }
 .status-tabs span.active { color: #409eff; font-weight: bold; }

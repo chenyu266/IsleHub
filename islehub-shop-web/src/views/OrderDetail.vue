@@ -1,5 +1,9 @@
 <template>
-  <div class="order-detail" v-if="order">
+  <div class="order-detail" v-if="loading">
+    <h2>订单详情</h2>
+    <PageSkeleton variant="order-detail" />
+  </div>
+  <div class="order-detail" v-else-if="order">
     <h2>订单详情</h2>
     <div class="info-row"><span>订单号</span><span>{{ order.orderNo }}</span></div>
     <div class="info-row"><span>状态</span><span class="status">{{ order.status }}</span></div>
@@ -36,14 +40,22 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getOrder, cancelOrder, confirmOrder } from '../api/order'
+import PageSkeleton from '../components/PageSkeleton.vue'
 
 const route = useRoute()
 const router = useRouter()
 const order = ref(null)
+const loading = ref(true)
 
 onMounted(async () => {
-  const res = await getOrder(route.params.id)
-  order.value = res.data
+  try {
+    const res = await getOrder(route.params.id)
+    order.value = res.data
+  } catch {
+    ElMessage.error('加载订单失败')
+  } finally {
+    loading.value = false
+  }
 })
 
 async function handleCancel() {

@@ -1,6 +1,5 @@
 <template>
   <div class="home-container">
-
     <!-- ====== 三栏主区域 ====== -->
     <section class="hero-section">
 
@@ -13,7 +12,8 @@
                @click.prevent="selectCat(null)">
               <span class="cat-icon">🏠</span><span>主页</span>
             </a>
-            <template v-for="cat in categories" :key="cat.id">
+            <PageSkeleton v-if="categoriesLoading" variant="category-nav" :rows="8" />
+            <template v-else v-for="cat in categories" :key="cat.id">
               <!-- 无子分类 → 直接可点击 -->
               <a v-if="!cat.children || !cat.children.length"
                  href="#"
@@ -45,7 +45,8 @@
 
       <!-- 中栏：推荐轮播 -->
       <main class="hero-center">
-        <div class="recommend-banner" v-if="recommendList.length"
+        <PageSkeleton v-if="recommendLoading" variant="banner" />
+        <div class="recommend-banner" v-else-if="recommendList.length"
              :style="{ '--bg-color': bannerBgColor }"
              @mouseenter="pauseBanner" @mouseleave="resumeBanner">
           <router-link :to="`/product/${currentRecommend.id}`" class="banner-inner">
@@ -74,8 +75,9 @@
       <!-- 右栏：用户信息 & 收货地址 -->
       <aside class="hero-right">
         <div class="user-panel">
+          <PageSkeleton v-if="userPanelLoading" variant="user-panel" />
           <!-- 未登录态 -->
-          <template v-if="!user">
+          <template v-else-if="!user">
             <div class="user-greeting">
               <p class="greet-text">Hi，欢迎来到 IsleHub 👋</p>
               <div class="auth-btns">
@@ -123,14 +125,15 @@
     </section>
 
     <!-- 商品网格 -->
-    <div class="product-grid">
+    <PageSkeleton v-if="productsLoading" variant="product-grid" :rows="8" />
+    <div v-else class="product-grid">
       <ProductCard v-for="p in products" :key="p.id" :product="p" />
     </div>
-    <div class="empty-state" v-if="!products.length">
+    <div class="empty-state" v-if="!productsLoading && !products.length">
       <p>没有找到相关商品</p>
       <router-link to="/">返回首页</router-link>
     </div>
-    <div class="pagination" v-if="total > pageSize">
+    <div class="pagination" v-if="!productsLoading && total > pageSize">
       <el-pagination background layout="prev, pager, next"
                      :total="total" :page-size="pageSize" v-model:current-page="pageNum"
                      @current-change="fetchProducts" />
@@ -139,13 +142,14 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, onUnmounted, reactive } from 'vue'
+import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { pageProducts, getCategoryTree } from '../api/product'
 import { getAddresses } from '../api/address'
 import { getInfo } from '../api/auth'
 import ProductCard from '../components/ProductCard.vue'
+import PageSkeleton from '../components/PageSkeleton.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -153,6 +157,10 @@ const products = ref([])
 const categories = ref([])       // 分类树数据
 const user = ref(null)
 const defaultAddr = ref(null)    // 默认收货地址
+const categoriesLoading = ref(true)
+const recommendLoading = ref(true)
+const productsLoading = ref(true)
+const userPanelLoading = ref(Boolean(localStorage.getItem('shop-token')))
 
 // ---- 轮播 ----
 const recommendList = ref([])
@@ -183,11 +191,13 @@ function resumeBanner(){ startTimer() }
 function goToSlide(i){ currentIndex.value=i; stopTimer(); startTimer() }
 
 async function fetchRecommends(){
+  recommendLoading.value = true
   try{
     const res = await pageProducts({page:1,pageSize:10})
     recommendList.value=(res.data.records||[]).filter(p=>p.mainImage).slice(0,6)
     if(recommendList.value.length>1) startTimer()
   }catch{}
+  finally { recommendLoading.value = false }
 }
 
 // ---- 分类选择 ----
@@ -213,22 +223,17 @@ function handleLogout(){
   user.value = null
   defaultAddr.value = null
 }
+
 onMounted(async()=>{
   // 监听退出登录事件（ShopHeader 退出时触发）
   window.addEventListener('app-user-logout', handleLogout)
 
-  // 分类树
-  try{ const res=await getCategoryTree(); const list=res.data||[]
-    categories.value=list
-  }catch{}
-  // 用户信息
-  try{ if(localStorage.getItem('shop-token')) user.value=(await getInfo()).data }catch{}
-  // 默认地址
-  fetchDefaultAddr()
-  // 推荐商品
-  fetchRecommends()
-  // 商品列表
-  fetchProducts()
+  Promise.all([
+    fetchCategories(),
+    fetchUserPanel(),
+    fetchRecommends(),
+    fetchProducts()
+  ])
 })
 onUnmounted(()=>{
   stopTimer()
@@ -239,6 +244,7 @@ watch(()=>route.query.categoryId,()=>{pageNum.value=1;fetchProducts()})
 watch(()=>route.query.keyword,()=>{pageNum.value=1;fetchProducts()})
 
 async function fetchProducts(){
+  productsLoading.value = true
   try{
     const params={page:pageNum.value,pageSize}
     if(route.query.categoryId) params.categoryId=route.query.categoryId
@@ -247,6 +253,29 @@ async function fetchProducts(){
     products.value=res.data.records
     total.value=res.data.total
   }catch{ ElMessage.error('加载商品失败') }
+  finally { productsLoading.value = false }
+}
+
+async function fetchCategories(){
+  categoriesLoading.value = true
+  try{
+    const res=await getCategoryTree()
+    categories.value=res.data||[]
+  }catch{}
+  finally { categoriesLoading.value = false }
+}
+
+async function fetchUserPanel(){
+  if(!localStorage.getItem('shop-token')){
+    userPanelLoading.value = false
+    return
+  }
+  userPanelLoading.value = true
+  try{
+    user.value=(await getInfo()).data
+    await fetchDefaultAddr()
+  }catch{}
+  finally { userPanelLoading.value = false }
 }
 
 async function fetchDefaultAddr(){

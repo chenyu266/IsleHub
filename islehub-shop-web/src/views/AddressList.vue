@@ -5,7 +5,8 @@
       <el-button type="primary" @click="openDialog(null)">新增地址</el-button>
     </div>
     <p class="tip">提示：双击地址卡片可快速设为默认收货地址</p>
-    <div v-if="addresses.length === 0" class="empty">暂无收货地址</div>
+    <PageSkeleton v-if="loading" variant="address-list" :rows="3" class="inline-skeleton" />
+    <div v-else-if="addresses.length === 0" class="empty">暂无收货地址</div>
     <div class="address-list" v-else>
       <div class="address-card" v-for="addr in addresses" :key="addr.id"
            :class="{ 'is-selected': selectedId === addr.id, 'is-default': addr.isDefault === 1 }"
@@ -25,10 +26,12 @@
       </div>
     </div>
     <el-dialog :title="editingAddr ? '编辑地址' : '新增地址'" v-model="dialogVisible" width="500px">
-      <el-form :model="form" label-width="80px">
+      <el-form ref="formRef" :model="form" :rules="formRules" label-width="80px" status-icon>
         <el-form-item label="收货人"><el-input v-model="form.receiverName" /></el-form-item>
-        <el-form-item label="手机号"><el-input v-model="form.receiverPhone" /></el-form-item>
-        <el-form-item label="地区">
+        <el-form-item label="手机号" prop="receiverPhone">
+          <el-input v-model="form.receiverPhone" placeholder="请输入11位手机号" />
+        </el-form-item>
+        <el-form-item label="地区" prop="region">
           <el-cascader
             v-model="form.region"
             :options="chinaRegionOptions"
@@ -39,7 +42,9 @@
             style="width:100%"
           />
         </el-form-item>
-        <el-form-item label="详细地址"><el-input v-model="form.detail" /></el-form-item>
+        <el-form-item label="详细地址" prop="detail">
+          <el-input v-model="form.detail" placeholder="请输入详细地址" />
+        </el-form-item>
         <el-form-item label="默认地址"><el-switch v-model="form.isDefaultBool" /></el-form-item>
       </el-form>
       <template #footer>
@@ -51,15 +56,18 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getAddresses, addAddress, updateAddress, deleteAddress } from '../api/address'
+import PageSkeleton from '../components/PageSkeleton.vue'
 import { chinaRegionOptions, isValidRegionPath } from '../data/chinaRegions'
 
 const addresses = ref([])
 const selectedId = ref(null)
 const dialogVisible = ref(false)
 const editingAddr = ref(null)
+const loading = ref(true)
+const formRef = ref(null)
 const regionProps = { expandTrigger: 'hover', emitPath: true }
 const form = reactive({
   receiverName: '',
@@ -71,10 +79,23 @@ const form = reactive({
   detail: '',
   isDefaultBool: false
 })
+const formRules = {
+  receiverPhone: [
+    { validator: validatePhone, trigger: ['blur', 'change'] }
+  ],
+  region: [
+    { validator: validateRegion, trigger: 'change' }
+  ],
+  detail: [
+    { validator: validateDetail, trigger: ['blur', 'change'] }
+  ]
+}
 
 onMounted(fetchAddresses)
 async function fetchAddresses() {
+  loading.value = true
   try { addresses.value = (await getAddresses()).data || [] } catch { ElMessage.error('加载地址失败') }
+  finally { loading.value = false }
 }
 
 function openDialog(addr) {
@@ -100,22 +121,21 @@ function openDialog(addr) {
       isDefaultBool: false
     })}
   dialogVisible.value = true
+  nextTick(() => formRef.value?.clearValidate())
 }
 
 async function handleSave() {
-  if (!isValidRegionPath(form.region)) {
-    ElMessage.warning('请选择省 / 市 / 区')
-    return
-  }
+  const valid = await formRef.value?.validate().catch(() => false)
+  if (!valid) return
   try {
     const [province, city, district] = form.region
     const data = {
       receiverName: form.receiverName,
-      receiverPhone: form.receiverPhone,
+      receiverPhone: String(form.receiverPhone || '').trim(),
       province,
       city,
       district,
-      detail: form.detail,
+      detail: String(form.detail || '').trim(),
       isDefault: form.isDefaultBool ? 1 : 0
     }
     if (editingAddr.value) {
@@ -127,6 +147,35 @@ async function handleSave() {
     await fetchAddresses()
     ElMessage.success('保存成功')
   } catch { ElMessage.error('保存失败') }
+}
+
+function validatePhone(_rule, value, callback) {
+  const phone = String(value || '').trim()
+  if (!phone) {
+    callback(new Error('请输入手机号'))
+    return
+  }
+  if (!/^\d{11}$/.test(phone)) {
+    callback(new Error('手机号必须为11位数字'))
+    return
+  }
+  callback()
+}
+
+function validateRegion(_rule, value, callback) {
+  if (!isValidRegionPath(value)) {
+    callback(new Error('请选择省 / 市 / 区'))
+    return
+  }
+  callback()
+}
+
+function validateDetail(_rule, value, callback) {
+  if (!String(value || '').trim()) {
+    callback(new Error('详细地址不能为空'))
+    return
+  }
+  callback()
 }
 
 async function handleDelete(id) {
@@ -156,6 +205,7 @@ async function handleSetDefault(addr) {
 <style scoped>
 .tip { color: #999; font-size: 12px; margin: 8px 0; }
 .address-page { background: #fff; padding: 30px; border-radius: 8px; }
+.inline-skeleton { padding: 0; }
 .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
 .address-card {
   position: relative;

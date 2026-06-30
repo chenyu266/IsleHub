@@ -11,11 +11,24 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 
-const props = defineProps({ skus: Array })
+const props = defineProps({
+  skus: {
+    type: Array,
+    default: () => []
+  },
+  selectedSkuId: {
+    type: [Number, String],
+    default: null
+  }
+})
 const emit = defineEmits(['select'])
 const selectedSkuId = ref(null)
+
+watch(() => props.selectedSkuId, value => {
+  selectedSkuId.value = value
+}, { immediate: true })
 
 function select(sku) {
   selectedSkuId.value = sku.id

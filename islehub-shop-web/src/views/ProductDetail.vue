@@ -1,5 +1,6 @@
 <template>
-  <div class="product-detail" v-if="product">
+  <PageSkeleton v-if="loading" variant="product-detail" />
+  <div class="product-detail" v-else-if="product">
     <div class="detail-image">
       <img v-if="product.mainImage" :src="product.mainImage" alt="" />
       <span v-else class="no-image">暂无图片</span>
@@ -15,14 +16,21 @@
       </div>
       <div class="section" v-if="product.skus && product.skus.length > 0">
         <div class="section-title">选择规格</div>
-        <SkuSelector :skus="product.skus" @select="onSkuSelect" />
+        <SkuSelector :skus="product.skus" :selected-sku-id="selectedSku?.id" @select="onSkuSelect" />
       </div>
       <div class="section">
         <div class="section-title">数量</div>
         <div class="quantity-ctrl">
-          <button @click="quantity = Math.max(1, quantity - 1)">-</button>
-          <span>{{ quantity }}</span>
-          <button @click="quantity++">+</button>
+          <el-input-number
+            v-model="quantity"
+            :min="1"
+            :precision="0"
+            :step="1"
+            controls-position="right"
+            class="quantity-input"
+            @change="handleQuantityChange"
+            @blur="normalizeQuantity"
+          />
           <span class="stock-tip" v-if="selectedSku">库存 {{ selectedSku.stock }} 件</span>
         </div>
       </div>
@@ -39,11 +47,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { getProduct } from '../api/product'
 import { addToCart as addToCartApi } from '../api/cart'
+import PageSkeleton from '../components/PageSkeleton.vue'
 import SkuSelector from '../components/SkuSelector.vue'
 
 const route = useRoute()
@@ -51,31 +60,113 @@ const router = useRouter()
 const product = ref(null)
 const selectedSku = ref(null)
 const quantity = ref(1)
+const loading = ref(true)
+const stockWarningVisible = ref(false)
 
 onMounted(async () => {
-  try { product.value = (await getProduct(route.params.id)).data } catch { ElMessage.error('加载商品失败') }
+  try {
+    product.value = (await getProduct(route.params.id)).data
+    selectedSku.value = getLowestPriceSku(product.value?.skus)
+  } catch { ElMessage.error('加载商品失败') }
+  finally { loading.value = false }
 })
 
-function onSkuSelect(sku) { selectedSku.value = sku }
+const availableStock = computed(() => {
+  const stock = Number(selectedSku.value?.stock)
+  return Number.isFinite(stock) ? Math.max(0, Math.floor(stock)) : 0
+})
+
+const maxQuantity = computed(() => {
+  return availableStock.value > 0 ? availableStock.value : 1
+})
+
+watch(selectedSku, () => normalizeQuantity())
+
+function getLowestPriceSku(skus = []) {
+  if (!Array.isArray(skus) || skus.length === 0) return null
+  const inStockSkus = skus.filter(sku => Number(sku.stock) > 0)
+  const candidates = inStockSkus.length > 0 ? inStockSkus : skus
+  return [...candidates].sort((a, b) => Number(a.price) - Number(b.price))[0] || null
+}
+
+function showMaxStockWarning() {
+  if (stockWarningVisible.value) return
+  stockWarningVisible.value = true
+  ElMessageBox.alert(`最大库存只有${availableStock.value}！`, '库存不足', {
+    type: 'warning',
+    confirmButtonText: '知道了'
+  }).finally(() => {
+    stockWarningVisible.value = false
+  })
+}
+
+function normalizeQuantity(options = {}) {
+  const { warnOnOverflow = false } = options
+  const value = Number(quantity.value)
+  if (!Number.isFinite(value) || value < 1) {
+    quantity.value = 1
+    return quantity.value
+  }
+  const normalizedValue = Math.floor(value)
+  if (normalizedValue > maxQuantity.value) {
+    if (warnOnOverflow) showMaxStockWarning()
+    quantity.value = maxQuantity.value
+    return quantity.value
+  }
+  quantity.value = normalizedValue
+  return quantity.value
+}
+
+function handleQuantityChange() {
+  normalizeQuantity({ warnOnOverflow: true })
+}
+
+function onSkuSelect(sku) {
+  selectedSku.value = sku
+}
+
+function validateQuantityForSubmit() {
+  const value = Number(quantity.value)
+  if (!Number.isFinite(value) || value < 1) {
+    quantity.value = 1
+    ElMessage.warning('请输入正确的购买数量')
+    return false
+  }
+  const normalizedValue = Math.floor(value)
+  if (normalizedValue > availableStock.value) {
+    showMaxStockWarning()
+    quantity.value = maxQuantity.value
+    return false
+  }
+  quantity.value = normalizedValue
+  return true
+}
 
 async function doAddToCart() {
   if (!localStorage.getItem('shop-token')) {
     ElMessage.warning('请先登录后再操作')
     router.push('/login')
-    return
+    return false
   }
-  if (!selectedSku.value) { ElMessage.warning('请选择规格'); return }
+  if (!selectedSku.value) { ElMessage.warning('请选择规格'); return false }
+  if (availableStock.value <= 0) { ElMessage.warning('该规格库存不足'); return false }
+  if (!validateQuantityForSubmit()) return false
+  const safeQuantity = quantity.value
   try {
-    await addToCartApi({ skuId: selectedSku.value.id, quantity: quantity.value })
+    await addToCartApi({ skuId: selectedSku.value.id, quantity: safeQuantity })
     ElMessage.success('已加入购物车')
-  } catch { ElMessage.error('加入购物车失败') }
+    return true
+  } catch {
+    ElMessage.error('加入购物车失败')
+    return false
+  }
 }
 
 async function addToCart() { await doAddToCart() }
 
 async function buyNow() {
-  await doAddToCart()
-  router.push('/cart')
+  const added = await doAddToCart()
+  if (added) router.push('/cart')
 }
 </script>
 
@@ -91,8 +182,7 @@ async function buyNow() {
 .section { margin-bottom: 20px; }
 .section-title { font-size: 14px; color: #999; margin-bottom: 8px; }
 .quantity-ctrl { display: flex; align-items: center; gap: 8px; }
-.quantity-ctrl button { width: 32px; height: 32px; border: 1px solid #dcdfe6; background: #fff; cursor: pointer; font-size: 16px; border-radius: 4px; }
-.quantity-ctrl span { font-size: 16px; min-width: 30px; text-align: center; }
+.quantity-input { width: 140px; }
 .stock-tip { font-size: 12px; color: #999; }
 .actions { display: flex; gap: 16px; margin-top: 30px; }
 .btn-cart { padding: 12px 30px; font-size: 16px; background: #409eff; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
