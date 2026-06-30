@@ -107,11 +107,11 @@ CREATE TABLE IF NOT EXISTS `address` (
 );
 
 CREATE TABLE IF NOT EXISTS `china_region` (
-                                              `code` INT PRIMARY KEY,
-                                              `name` VARCHAR(50) NOT NULL,
-                                              `parent_code` INT NOT NULL DEFAULT 0,
-                                              `level` TINYINT NOT NULL COMMENT '1=省 2=市 3=区县',
-                                              INDEX `idx_region_parent` (`parent_code`, `level`),
-                                              INDEX `idx_region_name` (`name`, `level`)
+    `code` INT PRIMARY KEY,
+    `name` VARCHAR(50) NOT NULL,
+    `parent_code` INT NOT NULL DEFAULT 0,
+    `level` TINYINT NOT NULL COMMENT '1=省 2=市 3=区县',
+    INDEX `idx_region_parent` (`parent_code`, `level`),
+    INDEX `idx_region_name` (`name`, `level`)
 );
 

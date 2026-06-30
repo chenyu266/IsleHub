@@ -61,7 +61,7 @@ public class ProductController {
     @Operation(summary = "删除商品")
     @DeleteMapping("/{id}")
     public Result<Void> delete(@Parameter(description = "商品ID") @PathVariable Long id) {
-        productService.removeById(id);
+        productService.deleteProduct(id);
         return Result.ok();
     }
 

@@ -12,22 +12,36 @@ import com.islehub.product.mapper.ProductMapper;
 import com.islehub.product.mapper.ProductSkuMapper;
 import com.islehub.product.service.CategoryService;
 import com.islehub.product.service.ProductService;
+import com.islehub.product.service.StockCacheService;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.io.File;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> implements ProductService {
 
+    @Value("${upload.path:uploads}")
+    private String uploadPath;
+
     private final ProductSkuMapper skuMapper;
     private final CategoryService categoryService;
+    private final StockCacheService stockCacheService;
 
-    public ProductServiceImpl(ProductSkuMapper skuMapper, CategoryService categoryService) {
+    public ProductServiceImpl(ProductSkuMapper skuMapper, CategoryService categoryService, StockCacheService stockCacheService) {
         this.skuMapper = skuMapper;
         this.categoryService = categoryService;
+        this.stockCacheService = stockCacheService;
     }
 
     @Override
@@ -75,6 +89,7 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
     @Transactional
     public void updateProduct(Product product, List<ProductSku> skus) {
         validateCategory(product.getCategoryId());
+        Product oldProduct = getById(product.getId());
         updateById(product);
         Long productId = product.getId();
         Set<Long> keepIds = skus.stream()
@@ -91,9 +106,14 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
             s.setProductId(productId);
             if (s.getId() != null) {
                 skuMapper.updateById(s);
+                stockCacheService.invalidate(s.getId());
             } else {
                 skuMapper.insert(s);
             }
+        }
+        // 清理被移除或替换的旧图片
+        if (oldProduct != null) {
+            deleteOrphanImages(oldProduct, product);
         }
     }
 
@@ -111,6 +131,89 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
         update(new LambdaUpdateWrapper<Product>()
                 .set(Product::getStatus, status)
                 .in(Product::getId, ids));
+    }
+
+    @Override
+    @Transactional
+    public void deleteProduct(Long id) {
+        Product product = getById(id);
+        if (product == null) {
+            throw new BizException("商品不存在");
+        }
+        removeById(id);
+        deleteImageFiles(product);
+    }
+
+    // ──────────────── image cleanup ────────────────
+
+    /** 删除商品的所有图片。 */
+    private void deleteImageFiles(Product product) {
+        File baseDir = resolveUploadDir();
+        deleteFile(baseDir, product.getMainImage());
+        if (product.getImages() != null && !product.getImages().isBlank()) {
+            Arrays.stream(product.getImages().split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .forEach(url -> deleteFile(baseDir, url));
+        }
+    }
+
+    /**
+     * 比较新旧商品图片，删除被移除或替换的旧图片。
+     */
+    private void deleteOrphanImages(Product oldProduct, Product newProduct) {
+        File baseDir = resolveUploadDir();
+
+        String oldMain = oldProduct.getMainImage();
+        String newMain = newProduct.getMainImage();
+        if (oldMain != null && !oldMain.isBlank() && !oldMain.equals(newMain)) {
+            deleteFile(baseDir, oldMain);
+        }
+
+        Set<String> newImageSet = parseImageSet(newProduct.getImages());
+        if (oldProduct.getImages() != null && !oldProduct.getImages().isBlank()) {
+            Arrays.stream(oldProduct.getImages().split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .filter(url -> !newImageSet.contains(url))
+                    .forEach(url -> deleteFile(baseDir, url));
+        }
+    }
+
+    private Set<String> parseImageSet(String images) {
+        if (images == null || images.isBlank()) {
+            return Set.of();
+        }
+        return Arrays.stream(images.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toSet());
+    }
+
+    private void deleteFile(File baseDir, String url) {
+        if (url == null || url.isBlank()) return;
+        try {
+            // URL 格式: /uploads/products/xxx.jpg → 提取文件名
+            String filename = url.substring(url.lastIndexOf('/') + 1);
+            Path filePath = Paths.get(baseDir.getAbsolutePath(), "products", filename);
+            File file = filePath.toFile();
+            if (file.exists() && file.isFile()) {
+                boolean deleted = file.delete();
+                if (!deleted) {
+                    log.warn("删除商品图片失败: {}", filePath);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("删除商品图片异常 url={}: {}", url, e.getMessage());
+        }
+    }
+
+    private File resolveUploadDir() {
+        File dir = new File(uploadPath);
+        if (!dir.isAbsolute()) {
+            dir = new File(System.getProperty("user.dir"), uploadPath);
+        }
+        return dir;
     }
 
     private void validateCategory(Long categoryId) {

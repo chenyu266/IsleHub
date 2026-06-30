@@ -13,4 +13,5 @@ public interface ProductService extends IService<Product> {
     void updateProduct(Product product, List<ProductSku> skus);
     void updateStatus(Long id, Integer status);
     void batchUpdateStatus(List<Long> ids, Integer status);
+    void deleteProduct(Long id);
 }

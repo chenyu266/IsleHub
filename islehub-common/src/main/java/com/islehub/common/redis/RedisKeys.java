@@ -31,4 +31,13 @@ public final class RedisKeys {
     public static String loginLock(String username) {
         return PREFIX + ":login:lock:" + username;
     }
+
+    // ---- 换绑邮箱 ----
+    public static String emailChangeCode(String email) {
+        return PREFIX + ":email:change:code:" + email;
+    }
+
+    public static String emailChangeNewCode(String email) {
+        return PREFIX + ":email:change:newcode:" + email;
+    }
 }

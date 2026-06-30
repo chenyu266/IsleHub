@@ -16,19 +16,32 @@ import com.islehub.user.mapper.UserMapper;
 import com.islehub.user.service.UserService;
 import com.islehub.user.util.EmailCheckUtil;
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements UserService {
+
+    private static final Set<String> ALLOWED_IMAGE_EXTS = Set.of("jpg", "jpeg", "png", "gif", "bmp", "webp");
+
+    @Value("${upload.path:uploads}")
+    private String uploadPath;
 
     private final StringRedisTemplate stringRedisTemplate;
     private final EmailCheckUtil emailCheckUtil;
@@ -127,6 +140,96 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     @Override
+    public void sendChangeEmailCode(Long userId, String newEmail) {
+        User user = getById(userId);
+        if (user == null) {
+            throw new BizException("用户不存在");
+        }
+        if (newEmail.equals(user.getEmail())) {
+            throw new BizException("新邮箱不能与当前邮箱相同");
+        }
+        if (lambdaQuery().eq(User::getEmail, newEmail)
+                .ne(User::getId, userId).one() != null) {
+            throw new BizException("该邮箱已被其他账号使用");
+        }
+        // 向当前邮箱发送验证码
+        sendCodeToEmail(user.getEmail(), RedisKeys.emailChangeCode(user.getEmail()));
+    }
+
+    @Override
+    public void changeEmail(Long userId, String newEmail, String oldCode, String newCode) {
+        User user = getById(userId);
+        if (user == null) {
+            throw new BizException("用户不存在");
+        }
+
+        if (newEmail.equals(user.getEmail())) {
+            throw new BizException("新邮箱不能与当前邮箱相同");
+        }
+
+        // 验证旧邮箱验证码
+        String oldEmail = user.getEmail();
+        String savedOldCode = stringRedisTemplate.opsForValue()
+                .get(RedisKeys.emailChangeCode(oldEmail));
+        if (savedOldCode == null) {
+            throw new BizException("旧邮箱验证码已过期，请重新发送");
+        }
+        if (!savedOldCode.equals(oldCode)) {
+            throw new BizException("旧邮箱验证码错误");
+        }
+
+        // 验证新邮箱验证码（独立 key，与注册验证码隔离）
+        String savedNewCode = stringRedisTemplate.opsForValue()
+                .get(RedisKeys.emailChangeNewCode(newEmail));
+        if (savedNewCode == null) {
+            throw new BizException("新邮箱验证码已过期，请重新发送");
+        }
+        if (!savedNewCode.equals(newCode)) {
+            throw new BizException("新邮箱验证码错误");
+        }
+
+        // 二次确认新邮箱未被占用
+        if (lambdaQuery().eq(User::getEmail, newEmail)
+                .ne(User::getId, userId).one() != null) {
+            throw new BizException("该邮箱已被其他账号使用");
+        }
+
+        // 更新邮箱
+        User update = new User();
+        update.setId(userId);
+        update.setEmail(newEmail);
+        updateById(update);
+
+        // 同步 session
+        User sessionUser = (User) StpUtil.getSession().get("user");
+        if (sessionUser != null) {
+            sessionUser.setEmail(newEmail);
+        }
+
+        // 清理 Redis
+        stringRedisTemplate.delete(RedisKeys.emailChangeCode(oldEmail));
+        stringRedisTemplate.delete(RedisKeys.emailChangeNewCode(newEmail));
+    }
+
+    private void sendCodeToEmail(String email, String codeKey) {
+        String rateKey = RedisKeys.emailRateLimit(email);
+        Boolean acquired = stringRedisTemplate.opsForValue()
+                .setIfAbsent(rateKey, "1", RedisKeys.EMAIL_RATE_LIMIT_TTL);
+        if (Boolean.FALSE.equals(acquired)) {
+            throw new BizException(RCode.TOO_MANY_REQUESTS.getCode(), "验证码发送过于频繁，请60秒后再试");
+        }
+        String code = emailCheckUtil.generateCode();
+        stringRedisTemplate.opsForValue()
+                .set(codeKey, code, RedisKeys.EMAIL_CODE_TTL);
+        try {
+            emailCheckUtil.sendCode(email, code);
+        } catch (Exception e) {
+            stringRedisTemplate.delete(codeKey);
+            throw new BizException(emailCheckUtil.errorMatcher(e.getMessage()));
+        }
+    }
+
+    @Override
     public Page<User> pageUsers(int page, int pageSize, String keyword) {
         return baseMapper.pageUsers(new Page<>(page, pageSize), keyword);
     }
@@ -145,11 +248,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         user.setEmail(dto.getEmail());
         user.setPhone(dto.getPhone());
         user.setStatus(dto.getStatus());
-        try {
-            save(user);
-        } catch (DuplicateKeyException e) {
-            throw translateDuplicateKey(e);
-        }
+        save(user);
     }
 
     @Override
@@ -178,11 +277,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         user.setPassword(BCrypt.hashpw(dto.getPassword()));
         user.setRole("customer");
         user.setStatus(1);
-        try {
-            save(user);
-        } catch (DuplicateKeyException e) {
-            throw translateDuplicateKey(e);
-        }
+        save(user);
         stringRedisTemplate.delete(codeKey);
     }
 
@@ -206,11 +301,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         user.setPhone(dto.getPhone());
         user.setAvatar(dto.getAvatar());
         user.setStatus(dto.getStatus());
-        try {
-            updateById(user);
-        } catch (DuplicateKeyException e) {
-            throw translateDuplicateKey(e);
-        }
+        updateById(user);
     }
 
     @Override
@@ -224,17 +315,125 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         updateById(user);
     }
 
-    /** 将 DB 唯一约束冲突转为友好中文提示 */
-    private BizException translateDuplicateKey(DuplicateKeyException e) {
-        String msg = e.getMessage();
-        if (msg != null) {
-            if (msg.contains("uk_email")) {
-                return new BizException("该邮箱已被注册");
-            }
-            if (msg.contains("uk_username")) {
-                return new BizException("用户名已存在");
-            }
+    @Override
+    public void updateUsername(Long userId, String newUsername) {
+        if (!StringUtils.hasText(newUsername)) {
+            throw new BizException("用户名不能为空");
         }
-        return new BizException("数据已存在，请检查后重试");
+        if (lambdaQuery().eq(User::getUsername, newUsername)
+                .ne(User::getId, userId).one() != null) {
+            throw new BizException("用户名已存在");
+        }
+        User user = new User();
+        user.setId(userId);
+        user.setUsername(newUsername);
+        updateById(user);
+        // 同步更新 session 中的用户信息
+        User sessionUser = (User) StpUtil.getSession().get("user");
+        if (sessionUser != null) {
+            sessionUser.setUsername(newUsername);
+        }
     }
+
+    @Override
+    public void updatePassword(Long userId, String oldPassword, String newPassword) {
+        if (!StringUtils.hasText(oldPassword) || !StringUtils.hasText(newPassword)) {
+            throw new BizException("密码不能为空");
+        }
+        User user = getById(userId);
+        if (user == null) {
+            throw new BizException("用户不存在");
+        }
+        if (!BCrypt.checkpw(oldPassword, user.getPassword())) {
+            throw new BizException("原密码错误");
+        }
+        if (oldPassword.equals(newPassword)) {
+            throw new BizException("新密码不能与旧密码相同");
+        }
+        User update = new User();
+        update.setId(userId);
+        update.setPassword(BCrypt.hashpw(newPassword));
+        updateById(update);
+    }
+
+    @Override
+    public String updateAvatar(Long userId, MultipartFile file) {
+        if (file.isEmpty()) {
+            throw new BizException("文件不能为空");
+        }
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            throw new BizException("只允许上传图片文件");
+        }
+        String originalName = file.getOriginalFilename();
+        String ext = extractExt(originalName);
+        if (!ALLOWED_IMAGE_EXTS.contains(ext.toLowerCase())) {
+            throw new BizException("不支持的文件类型，仅允许 " + String.join(",", ALLOWED_IMAGE_EXTS));
+        }
+
+        File baseDir = resolveUploadDir();
+        File avatarDir = new File(baseDir, "user_avatar");
+        if (!avatarDir.exists()) {
+            avatarDir.mkdirs();
+        }
+
+        String filename = UUID.randomUUID().toString() + "." + ext;
+        Path targetPath = Paths.get(avatarDir.getAbsolutePath(), filename);
+        try {
+            Files.copy(file.getInputStream(), targetPath);
+        } catch (IOException e) {
+            throw new BizException("头像上传失败");
+        }
+
+        String url = "/uploads/user_avatar/" + filename;
+
+        // 删除旧头像文件
+        User oldUser = getById(userId);
+        if (oldUser != null && oldUser.getAvatar() != null && !oldUser.getAvatar().isBlank()) {
+            deleteAvatarFile(oldUser.getAvatar());
+        }
+
+        // 更新 DB
+        User update = new User();
+        update.setId(userId);
+        update.setAvatar(url);
+        updateById(update);
+
+        // 同步 session
+        User sessionUser = (User) StpUtil.getSession().get("user");
+        if (sessionUser != null) {
+            sessionUser.setAvatar(url);
+        }
+
+        return url;
+    }
+
+    private void deleteAvatarFile(String avatarUrl) {
+        try {
+            String filename = avatarUrl.substring(avatarUrl.lastIndexOf('/') + 1);
+            Path filePath = Paths.get(resolveUploadDir().getAbsolutePath(), "user_avatar", filename);
+            File file = filePath.toFile();
+            if (file.exists() && file.isFile()) {
+                file.delete();
+            }
+        } catch (Exception ignored) {
+            // 删除失败不影响主流程
+        }
+    }
+
+    private File resolveUploadDir() {
+        File dir = new File(uploadPath);
+        if (!dir.isAbsolute()) {
+            dir = new File(System.getProperty("user.dir"), uploadPath);
+        }
+        return dir;
+    }
+
+    private static String extractExt(String filename) {
+        if (filename == null || filename.isEmpty()) return "";
+        int dot = filename.lastIndexOf('.');
+        if (dot <= 0 || dot == filename.length() - 1) return "";
+        return filename.substring(dot + 1);
+    }
+
 }

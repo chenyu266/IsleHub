@@ -16,4 +16,9 @@ public interface UserService extends IService<User> {
     void register(UserRegisterDTO dto);
     void updateUser(Long id, UserUpdateDTO dto);
     void updateStatus(Long id, Integer status);
+    void updateUsername(Long userId, String newUsername);
+    void updatePassword(Long userId, String oldPassword, String newPassword);
+    String updateAvatar(Long userId, org.springframework.web.multipart.MultipartFile file);
+    void sendChangeEmailCode(Long userId, String newEmail);
+    void changeEmail(Long userId, String newEmail, String oldCode, String newCode);
 }

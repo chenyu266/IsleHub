@@ -8,18 +8,20 @@ import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Redis 库存缓存 — 原子预扣 + 回滚。
  * <p>
  * 库存 Key: {@code stock:{skuId}} = 当前可售库存。
- * 首次访问时从 DB 惰性加载；数据库侧由 MQ 消费者异步落库。
+ * 首次访问时从 DB 惰性加载（带 5 分钟 TTL 兜底）；数据库侧由 MQ 消费者异步落库。
  */
 @Service
 @RequiredArgsConstructor
 public class StockCacheService {
 
     private static final String STOCK_PREFIX = "stock:";
+    private static final long STOCK_TTL_MINUTES = 5;
 
     private final StringRedisTemplate redisTemplate;
     private final ProductSkuMapper skuMapper;
@@ -51,7 +53,7 @@ public class StockCacheService {
 
     // ────────────────────── public API ──────────────────────
 
-    /** 原子预扣多 SKU 库存。成功返回 true，失败（库存不足）抛 BizException。 */
+    /** 原子预扣多 SKU 库存。失败时从 DB 重载后重试一次。 */
     public void tryDeduct(List<Long> skuIds, List<Integer> quantities) {
         if (skuIds.size() != quantities.size()) {
             throw new IllegalArgumentException("skuIds 和 quantities 长度不匹配");
@@ -69,6 +71,15 @@ public class StockCacheService {
         List<String> args = quantities.stream().map(String::valueOf).toList();
 
         Long result = redisTemplate.execute(DEDUCT_SCRIPT, keys, args.toArray());
+        if (result != null && result == 1) {
+            return;
+        }
+
+        // 失败 — 可能缓存过期导致数据不准，从 DB 重载后重试一次
+        for (Long skuId : skuIds) {
+            loadFromDb(skuId);
+        }
+        result = redisTemplate.execute(DEDUCT_SCRIPT, keys, args.toArray());
         if (result == null || result != 1) {
             throw new BizException("库存不足");
         }
@@ -79,6 +90,24 @@ public class StockCacheService {
         for (int i = 0; i < skuIds.size(); i++) {
             redisTemplate.opsForValue().increment(stockKey(skuIds.get(i)), quantities.get(i));
         }
+    }
+
+    /**
+     * 取消订单时恢复 Redis 缓存库存。
+     * 仅在 key 存在时才 INCRBY（避免 admin 删 key 后被错误重建）。
+     */
+    public void restoreIfPresent(List<Long> skuIds, List<Integer> quantities) {
+        for (int i = 0; i < skuIds.size(); i++) {
+            String key = stockKey(skuIds.get(i));
+            if (Boolean.TRUE.equals(redisTemplate.hasKey(key))) {
+                redisTemplate.opsForValue().increment(key, quantities.get(i));
+            }
+        }
+    }
+
+    /** 管理员修改库存后调用，删除 Redis 缓存，下次请求自动从 DB 加载。 */
+    public void invalidate(Long skuId) {
+        redisTemplate.delete(stockKey(skuId));
     }
 
     // ────────────────────── internal ──────────────────────
@@ -92,6 +121,7 @@ public class StockCacheService {
         if (sku == null) {
             throw new BizException("SKU 不存在: " + skuId);
         }
-        redisTemplate.opsForValue().set(stockKey(skuId), String.valueOf(sku.getStock()));
+        redisTemplate.opsForValue().set(stockKey(skuId), String.valueOf(sku.getStock()),
+                STOCK_TTL_MINUTES, TimeUnit.MINUTES);
     }
 }

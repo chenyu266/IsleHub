@@ -12,6 +12,7 @@ import com.islehub.order.mapper.OrderMapper;
 import com.islehub.order.mapper.OrderShippingMapper;
 import com.islehub.order.service.OrderService;
 import com.islehub.product.mapper.ProductSkuMapper;
+import com.islehub.product.service.StockCacheService;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
@@ -41,6 +42,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     private final OrderItemMapper itemMapper;
     private final OrderShippingMapper shippingMapper;
     private final ProductSkuMapper skuMapper;
+    private final StockCacheService stockCacheService;
 
     @Override
     public Page<Order> pageOrders(int page, int pageSize, String orderNo, String status,
@@ -186,12 +188,16 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         order.setStatus("cancelled");
         updateById(order);
 
-        // 恢复库存
+        // 恢复 DB 库存
         List<OrderItem> items = itemMapper.selectList(
                 new LambdaQueryWrapper<OrderItem>().eq(OrderItem::getOrderId, id));
         for (OrderItem item : items) {
             skuMapper.addStock(item.getSkuId(), item.getQuantity());
         }
+        // 同步恢复 Redis 缓存库存（仅当 key 存在时）
+        stockCacheService.restoreIfPresent(
+                items.stream().map(OrderItem::getSkuId).toList(),
+                items.stream().map(OrderItem::getQuantity).toList());
     }
 
     @Override
