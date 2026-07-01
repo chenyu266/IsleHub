@@ -23,20 +23,42 @@
     </el-header>
 
     <el-container>
-      <el-aside width="200px" class="sidebar">
+      <el-aside :width="sidebarWidth" class="sidebar" :class="{ 'is-collapsed': isCollapsed }">
+        <!-- 侧边栏收起/展开切换按钮 -->
+        <div class="sidebar-toggle" @click="toggleSidebar">
+          <el-icon :size="18">
+            <Fold v-if="!isCollapsed" />
+            <Expand v-else />
+          </el-icon>
+        </div>
         <el-menu :default-active="activeSideMenu" @select="handleSideSelect">
           <template v-if="activeTopMenu == 'dashboard'">
-            <el-menu-item index="/dashboard">工作台</el-menu-item>
+            <el-menu-item index="/dashboard">
+              <el-icon><Odometer /></el-icon>
+              <span>工作台</span>
+            </el-menu-item>
           </template>
           <template v-if="activeTopMenu == 'user'">
-            <el-menu-item index="/user">用户列表</el-menu-item>
+            <el-menu-item index="/user">
+              <el-icon><User /></el-icon>
+              <span>用户列表</span>
+            </el-menu-item>
           </template>
           <template v-if="activeTopMenu == 'product'">
-            <el-menu-item index="/product">商品列表</el-menu-item>
-            <el-menu-item index="/product/category">分类管理</el-menu-item>
+            <el-menu-item index="/product">
+              <el-icon><Goods /></el-icon>
+              <span>商品列表</span>
+            </el-menu-item>
+            <el-menu-item index="/product/category">
+              <el-icon><Files /></el-icon>
+              <span>分类管理</span>
+            </el-menu-item>
           </template>
           <template v-if="activeTopMenu == 'order'">
-            <el-menu-item index="/order">订单列表</el-menu-item>
+            <el-menu-item index="/order">
+              <el-icon><Document /></el-icon>
+              <span>订单列表</span>
+            </el-menu-item>
           </template>
         </el-menu>
       </el-aside>
@@ -57,10 +79,18 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { getInfo } from '../api/user'
+import { Fold, Expand, Odometer, User, Goods, Files, Document } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const route = useRoute()
 const userInfo = ref(null)
+
+/* 侧边栏收起/展开：isCollapsed 控制状态，sidebarWidth 响应式宽度 */
+const isCollapsed = ref(false)
+const sidebarWidth = computed(() => isCollapsed.value ? '64px' : '200px')
+function toggleSidebar() {
+  isCollapsed.value = !isCollapsed.value
+}
 
 const activeTopMenu = computed(() => {
   const path = route.path
@@ -99,14 +129,80 @@ onMounted(fetchInfo)
 .layout { height: 100vh; user-select: none;}
 .header { display: flex; align-items: center; justify-content: space-between; background: #fff; border-bottom: 1px solid #e4e7ed; padding: 0 20px; }
 .header-left { display: flex; align-items: center; }
-.header-left h2 { margin-right: 30px; color: #409eff; font-size: 20px; }
+/* Logo：轻微字重区分（600），hover 柔和放大 1.05 倍 + 透明度过渡 */
+  .header-left h2 {
+    margin-right: 15px;
+    padding-right: 15px;
+    color: #409eff;
+    font-size: 20px;
+    font-weight: 600;
+    opacity: 0.85;
+    cursor: default;
+    position: relative;
+    transform-origin: left center;
+    transition: transform 0.25s ease, opacity 0.25s ease;
+  }
+  .header-left h2:hover {
+    transform: scale(1.05);
+    opacity: 1;
+  }
+  /* Logo 右侧细微分隔竖线：区分品牌区与功能 Tab 区 */
+  .header-left h2::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1px;
+    height: 20px;
+    background-color: #e4e7ed;
+  }
 .top-menu { border-bottom: none !important; }
 .header-right { display: flex; align-items: center; gap: 15px; }
-.sidebar { background: #fafafa; border-right: 1px solid #e4e7ed; }
+/* 侧边栏：宽度平滑过渡 + 收起时溢出隐藏（防止文字溢出闪现） */
+.sidebar {
+  background: #fafafa;
+  border-right: 1px solid #e4e7ed;
+  transition: width 0.28s ease;
+  overflow: hidden;
+}
 
-/* 侧边菜单项：hover 底色淡入过渡（底色沿用 EP 默认，仅加平滑过渡） */
+/* 收起/展开切换按钮：顶部居中图标 */
+.sidebar-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  cursor: pointer;
+  color: #909399;
+  border-bottom: 1px solid #e4e7ed;
+  transition: background-color 0.25s ease;
+}
+.sidebar-toggle:hover {
+  background-color: #f0f2f5;
+}
+
+/* el-menu 去除默认右边框，宽度跟随 aside */
+.sidebar :deep(.el-menu) {
+  border-right: none;
+}
+
+/* 菜单项：padding + 底色过渡（底色沿用 EP 默认，仅加平滑过渡） */
 .sidebar :deep(.el-menu-item) {
-  transition: background-color 0.25s ease, color 0.25s ease;
+  transition: padding 0.28s ease, background-color 0.25s ease, color 0.25s ease;
+}
+/* 收起时菜单项：缩小 padding 使图标视觉居中 */
+.sidebar.is-collapsed :deep(.el-menu-item) {
+  padding-left: 22px !important;
+}
+
+/* 菜单文字：收起时淡出、展开时延迟淡入，与宽度过渡错开避免突兀闪现 */
+.sidebar :deep(.el-menu-item > span) {
+  transition: opacity 0.2s ease 0.05s;
+  white-space: nowrap;
+}
+.sidebar.is-collapsed :deep(.el-menu-item > span) {
+  opacity: 0;
 }
 
 /* 顶部 Tab 切换：内容区淡入淡出动画 */
