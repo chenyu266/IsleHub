@@ -29,8 +29,12 @@ public class StpInterfaceImpl implements StpInterface {
 
     @Override
     public List<String> getRoleList(Object loginId, String loginType) {
-        // Sa-Token 内部将 loginId 存为 String，需要 parse 回 Long
-        Long userId = Long.valueOf(loginId.toString());
+        Long userId;
+        try {
+            userId = Long.valueOf(loginId.toString());
+        } catch (NumberFormatException e) {
+            return Collections.emptyList();
+        }
         User user = userMapper.selectById(userId);
         if (user == null || user.getStatus() == null || user.getStatus() != 1) {
             throw new NotPermissionException("账号已被禁用");

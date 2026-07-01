@@ -1,12 +1,13 @@
 package com.islehub.user.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("user")
+@TableName("`user`")
 public class User {
     @TableId(type = IdType.ASSIGN_ID)
     private Long id;
@@ -14,6 +15,7 @@ public class User {
     private String username;
     @TableField(updateStrategy = FieldStrategy.NOT_NULL)
     @NotBlank(message = "密码不能为空")
+    @JsonIgnore
     private String password;
     @NotBlank(message = "邮箱不能为空")
     private String email;
@@ -21,7 +23,7 @@ public class User {
     private String avatar;
     private LocalDateTime lastLoginTime;
     private String lastLoginIp;
-    @TableLogic
+    @TableLogic(value = "0", delval = "1")
     private Integer deleteFlag;
     private String role;
     private Integer status;

@@ -1,17 +1,20 @@
 package com.islehub.user.controller;
 
+import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckRole;
+import cn.dev33.satoken.annotation.SaIgnore;
 import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.islehub.common.result.Result;
 import com.islehub.user.dto.ChangeEmailDTO;
+import com.islehub.user.dto.ConfirmNewCodeDTO;
 import com.islehub.user.dto.LoginDTO;
 import com.islehub.user.dto.UpdatePasswordDTO;
 import com.islehub.user.dto.UpdateUsernameDTO;
 import com.islehub.user.dto.UserAddDTO;
 import com.islehub.user.dto.UserRegisterDTO;
 import com.islehub.user.dto.UserUpdateDTO;
-import com.islehub.user.dto.VerifyEmailCodesDTO;
+import com.islehub.user.dto.VerifyOldCodeDTO;
 import com.islehub.user.entity.User;
 import com.islehub.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -22,6 +25,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+@SaCheckLogin
 @Tag(name = "管理-用户", description = "用户CRUD、登录、状态管理")
 @RestController
 @RequestMapping("/api/user")
@@ -30,12 +34,14 @@ public class UserController {
 
     private final UserService userService;
 
+    @SaIgnore
     @Operation(summary = "登录（支持邮箱或用户名）")
     @PostMapping("/login")
     public Result<String> login(@RequestBody LoginDTO dto) {
         return userService.login(dto.getAccount(), dto.getPassword());
     }
 
+    @SaIgnore
     @Operation(summary = "发送邮箱验证码")
     @PostMapping("/send-email-code")
     public Result<Void> sendEmailCode(@RequestParam String email) {
@@ -43,6 +49,7 @@ public class UserController {
         return Result.ok();
     }
 
+    @SaIgnore
     @Operation(summary = "用户注册")
     @PostMapping("/register")
     public Result<Void> register(@Valid @RequestBody UserRegisterDTO dto) {
@@ -86,10 +93,17 @@ public class UserController {
         return Result.ok();
     }
 
-    @Operation(summary = "确认换绑邮箱 — 验证新旧邮箱验证码并更新")
+    @Operation(summary = "验证旧邮箱 — 校验身份后向新邮箱发送验证码")
+    @PostMapping("/email/verify")
+    public Result<Void> verifyOldCode(@Valid @RequestBody VerifyOldCodeDTO dto) {
+        userService.verifyOldEmailCode(StpUtil.getLoginIdAsLong(), dto.getOldCode());
+        return Result.ok();
+    }
+
+    @Operation(summary = "确认新邮箱 — 验证新邮箱验证码并完成换绑")
     @PutMapping("/email")
-    public Result<Void> changeEmail(@Valid @RequestBody VerifyEmailCodesDTO dto) {
-        userService.changeEmail(StpUtil.getLoginIdAsLong(), dto.getNewEmail(), dto.getOldCode(), dto.getNewCode());
+    public Result<Void> confirmNewEmail(@Valid @RequestBody ConfirmNewCodeDTO dto) {
+        userService.confirmNewEmail(StpUtil.getLoginIdAsLong(), dto.getNewCode());
         return Result.ok();
     }
 

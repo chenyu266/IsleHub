@@ -5,9 +5,9 @@ import cn.dev33.satoken.annotation.SaMode;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.islehub.common.result.Result;
 import com.islehub.order.dto.OrderCreateDTO;
+import com.islehub.order.dto.ShippingDTO;
 import com.islehub.order.dto.StatusDTO;
 import com.islehub.order.entity.Order;
-import com.islehub.order.entity.OrderShipping;
 import com.islehub.order.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import io.swagger.v3.oas.annotations.Operation;
@@ -71,9 +71,8 @@ public class OrderController {
     @Operation(summary = "订单发货")
     @PostMapping("/{id}/shipping")
     public Result<Void> shipping(@Parameter(description = "订单ID") @PathVariable Long id,
-                                 @Valid @RequestBody OrderShipping shipping) {
-        shipping.setOrderId(id);
-        orderService.addShipping(shipping);
+                                 @Valid @RequestBody ShippingDTO dto) {
+        orderService.addShipping(id, dto.getCarrier(), dto.getTrackingNo());
         return Result.ok();
     }
 

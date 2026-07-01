@@ -5,6 +5,7 @@ import cn.dev33.satoken.exception.NotPermissionException;
 import cn.dev33.satoken.exception.NotRoleException;
 import com.islehub.common.enums.RCode;
 import com.islehub.common.result.Result;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -38,8 +39,10 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(BizException.class)
-    public Result<Void> handleBizException(BizException e) {
+    public Result<Void> handleBizException(BizException e, HttpServletResponse response) {
         log.warn("BizException: {}", e.getMessage());
+        int httpStatus = (e.getCode() >= 100 && e.getCode() < 600) ? e.getCode() : 400;
+        response.setStatus(httpStatus);
         return Result.fail(e.getCode(), e.getMessage());
     }
 

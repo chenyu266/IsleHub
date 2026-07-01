@@ -1,5 +1,6 @@
 package com.islehub.shop.controller;
 
+import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.islehub.common.result.Result;
@@ -14,6 +15,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.*;
 
+@SaCheckLogin
 @Tag(name = "商城-订单", description = "C端订单：下单、查单、取消、确认收货")
 @RequiredArgsConstructor
 @RestController

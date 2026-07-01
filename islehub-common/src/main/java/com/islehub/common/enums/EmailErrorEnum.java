@@ -8,7 +8,7 @@ import lombok.Getter;
 public enum EmailErrorEnum {
 
     INVALID_ADDRESS("invalid address", "邮箱地址格式错误或不存在"),
-    UNKNOWN_USER("unknown user", "邮箱地址格式错误或不存在"),
+    UNKNOWN_USER("unknown user", "邮箱地址不存在"),
     AUTH_FAILED("authentication failed", "发件邮箱认证失败（检查授权码）"),
     ERROR_535("535", "发件邮箱认证失败（检查授权码）"),
     CONNECTION_TIMEOUT("connection timed out", "邮件服务器连接超时，请稍后重试"),

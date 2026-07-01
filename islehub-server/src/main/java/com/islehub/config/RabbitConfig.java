@@ -12,6 +12,8 @@ public class RabbitConfig {
     public static final String EXCHANGE = "islehub.order.topic";
     public static final String QUEUE_STOCK_CONFIRM = "islehub.stock.confirm";
     public static final String ROUTING_STOCK_CONFIRM = "order.stock.confirm";
+    public static final String DLX_EXCHANGE = "islehub.dead.letter";
+    public static final String DLQ_STOCK_CONFIRM = "islehub.stock.confirm.dlq";
 
     @Bean
     public TopicExchange orderTopicExchange() {
@@ -20,7 +22,10 @@ public class RabbitConfig {
 
     @Bean
     public Queue stockConfirmQueue() {
-        return QueueBuilder.durable(QUEUE_STOCK_CONFIRM).build();
+        return QueueBuilder.durable(QUEUE_STOCK_CONFIRM)
+                .deadLetterExchange(DLX_EXCHANGE)
+                .deadLetterRoutingKey(DLQ_STOCK_CONFIRM)
+                .build();
     }
 
     @Bean
@@ -28,6 +33,23 @@ public class RabbitConfig {
         return BindingBuilder.bind(stockConfirmQueue())
                 .to(orderTopicExchange())
                 .with(ROUTING_STOCK_CONFIRM);
+    }
+
+    @Bean
+    public TopicExchange deadLetterExchange() {
+        return new TopicExchange(DLX_EXCHANGE, true, false);
+    }
+
+    @Bean
+    public Queue stockConfirmDlq() {
+        return QueueBuilder.durable(DLQ_STOCK_CONFIRM).build();
+    }
+
+    @Bean
+    public Binding stockConfirmDlqBinding() {
+        return BindingBuilder.bind(stockConfirmDlq())
+                .to(deadLetterExchange())
+                .with(DLQ_STOCK_CONFIRM);
     }
 
     /**

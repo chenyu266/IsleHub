@@ -1,6 +1,7 @@
 package com.islehub.order.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.islehub.common.exception.BizException;
@@ -14,7 +15,9 @@ import com.islehub.order.mapper.OrderMapper;
 import com.islehub.order.mapper.OrderShippingMapper;
 import com.islehub.order.service.OrderService;
 import com.islehub.product.service.ProductService;
+import com.islehub.product.service.StockCacheService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -30,6 +33,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements OrderService {
@@ -45,6 +49,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     private final OrderShippingMapper shippingMapper;
     private final ProductService productService;
     private final CacheService cacheService;
+    private final StockCacheService stockCacheService;
 
     @Override
     public Page<Order> pageOrders(int page, int pageSize, String orderNo, String status,
@@ -93,8 +98,15 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
             throw new BizException("不允许从 " + order.getStatus() + " 变更为 " + status);
         }
 
-        order.setStatus(status);
-        updateById(order);
+        // 原子更新：WHERE status=old_status 防止并发覆盖
+        LambdaUpdateWrapper<Order> wrapper = new LambdaUpdateWrapper<Order>()
+                .set(Order::getStatus, status)
+                .eq(Order::getId, id)
+                .eq(Order::getStatus, order.getStatus());
+        if (baseMapper.update(null, wrapper) == 0) {
+            throw new BizException("订单状态已变更，请刷新后重试");
+        }
+
         if ("delivered".equals(status) || "completed".equals(status)) {
             OrderShipping shipping = shippingMapper.selectOne(
                     new LambdaQueryWrapper<OrderShipping>().eq(OrderShipping::getOrderId, id));
@@ -104,33 +116,53 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
             }
         }
 
-        // 状态变更后失效缓存
         cacheService.evict(RedisKeys.orderDetail(id));
     }
 
     @Override
     @Transactional
     public void cancelOrder(Long id) {
+        Order order = getById(id);
+        if (order == null) throw new BizException("订单不存在");
+
         updateStatus(id, "cancelled");
-        // updateStatus 内部已失效缓存
+
+        // 管理员取消也恢复库存（与 C 端 cancelUserOrder 一致）
+        List<OrderItem> items = itemMapper.selectList(
+                new LambdaQueryWrapper<OrderItem>().eq(OrderItem::getOrderId, id));
+        for (OrderItem item : items) {
+            productService.addSkuStock(item.getSkuId(), item.getQuantity());
+        }
+        stockCacheService.restoreIfPresent(
+                items.stream().map(OrderItem::getSkuId).toList(),
+                items.stream().map(OrderItem::getQuantity).toList());
     }
 
     @Override
     @Transactional
-    public void addShipping(OrderShipping shipping) {
+    public void addShipping(Long orderId, String carrier, String trackingNo) {
+        OrderShipping shipping = new OrderShipping();
+        shipping.setOrderId(orderId);
+        shipping.setCarrier(carrier);
+        shipping.setTrackingNo(trackingNo);
         shipping.setShippedAt(LocalDateTime.now());
         shippingMapper.insert(shipping);
-        updateStatus(shipping.getOrderId(), "shipped");
+        updateStatus(orderId, "shipped");
         // updateStatus 内部已失效缓存
     }
 
+    private static final int EXPORT_MAX_ROWS = 10000;
+
     @Override
     public List<Order> exportOrders(String orderNo, String status, String startDate, String endDate) {
-        return baseMapper.pageOrders(new Page<>(1, Integer.MAX_VALUE),
+        Page<Order> page = baseMapper.pageOrders(new Page<>(1, EXPORT_MAX_ROWS),
                 orderNo, status,
                 StringUtils.hasText(startDate) ? startDate + " 00:00:00" : null,
-                StringUtils.hasText(endDate) ? endDate + " 23:59:59" : null)
-                .getRecords();
+                StringUtils.hasText(endDate) ? endDate + " 23:59:59" : null);
+        if (page.getTotal() > EXPORT_MAX_ROWS) {
+            log.warn("导出订单超过上限，仅导出前 {} 条，总数 {}", EXPORT_MAX_ROWS, page.getTotal());
+        }
+        return page.getRecords();
     }
 
     @Override
@@ -160,7 +192,8 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
             workbook.write(out);
             return out.toByteArray();
         } catch (Exception e) {
-            throw new BizException("导出Excel失败");
+            log.error("导出Excel失败", e);
+            throw new BizException("导出Excel失败", e);
         }
     }
 
@@ -190,15 +223,23 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     @Override
     @Transactional
     public void cancelUserOrder(Long id, Long userId) {
-        Order order = getById(id);
-        if (order == null || !order.getUserId().equals(userId)) {
-            throw new BizException("订单不存在");
-        }
-        if (!"paid".equals(order.getStatus())) {
+        // 乐观锁：原子 UPDATE WHERE status='paid'，防止并发重复恢复库存
+        LambdaUpdateWrapper<Order> updateWrapper = new LambdaUpdateWrapper<Order>()
+                .set(Order::getStatus, "cancelled")
+                .eq(Order::getId, id)
+                .eq(Order::getUserId, userId)
+                .eq(Order::getStatus, "paid");
+        int rows = baseMapper.update(null, updateWrapper);
+        if (rows == 0) {
+            Order order = getById(id);
+            if (order == null || !order.getUserId().equals(userId)) {
+                throw new BizException("订单不存在");
+            }
+            if ("cancelled".equals(order.getStatus())) {
+                throw new BizException("订单已取消，请勿重复操作");
+            }
             throw new BizException("只能取消已支付未发货的订单");
         }
-        order.setStatus("cancelled");
-        updateById(order);
         cacheService.evict(RedisKeys.orderDetail(id));
 
         // 恢复 DB 库存
@@ -207,6 +248,10 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         for (OrderItem item : items) {
             productService.addSkuStock(item.getSkuId(), item.getQuantity());
         }
+        // 同步恢复 Redis 缓存库存（仅当 key 存在时，避免 admin 删 key 后被错误重建）
+        stockCacheService.restoreIfPresent(
+                items.stream().map(OrderItem::getSkuId).toList(),
+                items.stream().map(OrderItem::getQuantity).toList());
     }
 
     @Override

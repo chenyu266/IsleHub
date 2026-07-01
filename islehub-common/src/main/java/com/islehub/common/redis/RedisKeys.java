@@ -46,11 +46,19 @@ public final class RedisKeys {
         return PREFIX + ":email:change:newcode:" + email;
     }
 
+    public static String emailChangePending(Long userId) {
+        return PREFIX + ":email:change:pending:" + userId;
+    }
+
     public static String productDetail(Long id) {
         return PREFIX + ":product:detail:" + id;
     }
 
     public static String orderDetail(Long id) {
         return PREFIX + ":order:detail:" + id;
+    }
+
+    public static String emailCodeAttempts(String email) {
+        return PREFIX + ":email:attempts:" + email;
     }
 }

@@ -45,6 +45,7 @@ public class CartService {
             "  if expected == -1 then " +
             "    redis.call('HSET', KEYS[1], ARGV[1], ARGV[2]); " +
             "    redis.call('HSET', KEYS[1], ver_field, ARGV[4]); " +
+            "    redis.call('EXPIRE', KEYS[1], ARGV[5]); " +
             "    return 1; " +
             "  end; " +
             "  return 0; " +
@@ -52,13 +53,16 @@ public class CartService {
             "if tonumber(current_ver) == expected then " +
             "  redis.call('HSET', KEYS[1], ARGV[1], ARGV[2]); " +
             "  redis.call('HSET', KEYS[1], ver_field, ARGV[4]); " +
+            "  redis.call('EXPIRE', KEYS[1], ARGV[5]); " +
             "  return 1; " +
             "end; " +
             "return 0;");
     }
 
+    private static final java.time.Duration CART_TTL = java.time.Duration.ofDays(7);
+
     private String key(Long userId) {
-        return "cart:" + userId;
+        return "IsleHub:cart:" + userId;
     }
 
     public List<CartItem> list(Long userId) {
@@ -109,8 +113,8 @@ public class CartService {
                 next.setProductId(current.getProductId());
                 next.setProductName(detail.getProductName() != null ? detail.getProductName() : current.getProductName());
                 next.setProductImage(detail.getProductImage() != null ? detail.getProductImage() : current.getProductImage());
-                next.setSkuSpec(detail.getSpec());
-                next.setPrice(current.getPrice());
+                next.setSkuSpec(detail.getSpec() != null ? detail.getSpec() : current.getSkuSpec());
+                next.setPrice(detail.getPrice());
                 next.setQuantity(current.getQuantity() + quantity);
                 next.setVersion(current.getVersion() + 1);
                 expectedVersion = current.getVersion();
@@ -120,10 +124,15 @@ public class CartService {
                 Long result = redisTemplate.execute(CAS_SET,
                         Collections.singletonList(cartKey),
                         field, json, String.valueOf(expectedVersion),
-                        String.valueOf(next.getVersion()));
+                        String.valueOf(next.getVersion()),
+                        String.valueOf(CART_TTL.getSeconds()));
                 if (result != null && result == 1) return;
+                Thread.sleep((long) (Math.random() * 20) + retry * 5L);
             } catch (JsonProcessingException e) {
-                throw new BizException("购物车操作失败");
+                throw new BizException("购物车操作失败", e);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new BizException("操作被中断");
             }
         }
         throw new BizException("操作冲突，请重试");
@@ -151,10 +160,15 @@ public class CartService {
                 Long result = redisTemplate.execute(CAS_SET,
                         Collections.singletonList(cartKey),
                         field, json, String.valueOf(current.getVersion()),
-                        String.valueOf(next.getVersion()));
+                        String.valueOf(next.getVersion()),
+                        String.valueOf(CART_TTL.getSeconds()));
                 if (result != null && result == 1) return;
+                Thread.sleep((long) (Math.random() * 20) + retry * 5L);
             } catch (JsonProcessingException e) {
-                throw new BizException("购物车操作失败");
+                throw new BizException("购物车操作失败", e);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new BizException("操作被中断");
             }
         }
         throw new BizException("操作冲突，请重试");

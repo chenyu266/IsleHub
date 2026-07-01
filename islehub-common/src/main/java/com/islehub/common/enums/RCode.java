@@ -45,7 +45,7 @@ public enum RCode {
     }
 
     private static final Map<Integer, RCode> CODE_MAP =
-            Arrays.stream(values()).collect(Collectors.toMap(RCode::getCode, e -> e));
+            Arrays.stream(values()).collect(Collectors.toMap(RCode::getCode, e -> e, (a, b) -> a));
 
     /**
      * 根据状态码查找枚举，找不到返回 {@code null}
@@ -58,6 +58,6 @@ public enum RCode {
      * 判断是否为成功状态
      */
     public boolean isSuccess() {
-        return this == OK || this == CREATED;
+        return this.code >= 200 && this.code < 300;
     }
 }

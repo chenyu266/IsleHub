@@ -1,5 +1,6 @@
 package com.islehub.shop.controller;
 
+import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.stp.StpUtil;
 import com.islehub.common.result.Result;
 import com.islehub.shop.entity.Address;
@@ -12,6 +13,7 @@ import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
+@SaCheckLogin
 @Tag(name = "商城-地址", description = "收货地址增删改查")
 @RequiredArgsConstructor
 @RestController

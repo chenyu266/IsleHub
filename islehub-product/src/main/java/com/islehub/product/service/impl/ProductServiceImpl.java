@@ -137,6 +137,7 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
     }
 
     @Override
+    @Transactional
     public void updateStatus(Long id, Integer status) {
         Product product = new Product();
         product.setId(id);

@@ -1,5 +1,6 @@
 package com.islehub.shop.controller;
 
+import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.stp.StpUtil;
 import com.islehub.common.result.Result;
 import com.islehub.shop.dto.AddCartItemDTO;
@@ -13,6 +14,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
+@SaCheckLogin
 @Tag(name = "商城-购物车", description = "购物车增删改查")
 @RequiredArgsConstructor
 @RestController

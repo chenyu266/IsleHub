@@ -8,20 +8,19 @@ import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Redis 库存缓存 — 原子预扣 + 回滚。
  * <p>
  * 库存 Key: {@code stock:{skuId}} = 当前可售库存。
- * 首次访问时从 DB 惰性加载（带 5 分钟 TTL 兜底）；数据库侧由 MQ 消费者异步落库。
+ * 首次访问时从 DB 惰性加载，30 分钟 TTL 兜底（MQ 消费者 / admin 主动失效为主）。
  */
 @Service
 @RequiredArgsConstructor
 public class StockCacheService {
 
     private static final String STOCK_PREFIX = "stock:";
-    private static final long STOCK_TTL_MINUTES = 5;
+    private static final long STOCK_TTL_MINUTES = 30;
 
     private final StringRedisTemplate redisTemplate;
     private final ProductSkuMapper skuMapper;
@@ -59,27 +58,15 @@ public class StockCacheService {
             throw new IllegalArgumentException("skuIds 和 quantities 长度不匹配");
         }
 
-        // 惰性加载：确保所有 key 存在
+        // 惰性加载：确保所有 key 存在（SETNX 防止并发重复加载）
         for (int i = 0; i < skuIds.size(); i++) {
-            String key = stockKey(skuIds.get(i));
-            if (Boolean.FALSE.equals(redisTemplate.hasKey(key))) {
-                loadFromDb(skuIds.get(i));
-            }
+            loadFromDbIfAbsent(skuIds.get(i));
         }
 
         List<String> keys = skuIds.stream().map(this::stockKey).toList();
         List<String> args = quantities.stream().map(String::valueOf).toList();
 
         Long result = redisTemplate.execute(DEDUCT_SCRIPT, keys, args.toArray());
-        if (result != null && result == 1) {
-            return;
-        }
-
-        // 失败 — 可能缓存过期导致数据不准，从 DB 重载后重试一次
-        for (Long skuId : skuIds) {
-            loadFromDb(skuId);
-        }
-        result = redisTemplate.execute(DEDUCT_SCRIPT, keys, args.toArray());
         if (result == null || result != 1) {
             throw new BizException("库存不足");
         }
@@ -116,12 +103,14 @@ public class StockCacheService {
         return STOCK_PREFIX + skuId;
     }
 
-    private void loadFromDb(Long skuId) {
+    /** 惰性加载：仅当 key 不存在时从 DB 写入，SETNX 防并发 TOCTOU。 */
+    private void loadFromDbIfAbsent(Long skuId) {
         var sku = skuMapper.selectById(skuId);
         if (sku == null) {
             throw new BizException("SKU 不存在: " + skuId);
         }
-        redisTemplate.opsForValue().set(stockKey(skuId), String.valueOf(sku.getStock()),
-                STOCK_TTL_MINUTES, TimeUnit.MINUTES);
+        redisTemplate.opsForValue().setIfAbsent(stockKey(skuId), String.valueOf(sku.getStock()),
+                STOCK_TTL_MINUTES, java.util.concurrent.TimeUnit.MINUTES);
     }
+
 }

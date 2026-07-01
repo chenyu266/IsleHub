@@ -11,6 +11,8 @@ import java.util.List;
 @AllArgsConstructor
 public class OrderCreatedEvent implements Serializable {
 
+    private static final long serialVersionUID = 1L;
+
     private Long orderId;
     private List<OrderItemStock> items;
 

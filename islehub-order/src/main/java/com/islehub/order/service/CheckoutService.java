@@ -72,10 +72,10 @@ public class CheckoutService {
             item.setSkuId(ci.getSkuId());
             item.setProductName(ci.getProductName());
             item.setSkuSpec(ci.getSkuSpec());
-            item.setPrice(ci.getPrice());
+            item.setPrice(sku.getPrice());
             item.setQuantity(ci.getQuantity());
             orderItems.add(item);
-            total = total.add(ci.getPrice().multiply(BigDecimal.valueOf(ci.getQuantity())));
+            total = total.add(sku.getPrice().multiply(BigDecimal.valueOf(ci.getQuantity())));
         }
 
         // ③ DB 创建订单
@@ -114,7 +114,7 @@ public class CheckoutService {
 
         } catch (Exception e) {
             stockCacheService.rollback(skuIds, quantities);
-            throw new BizException("订单创建失败：" + e.getMessage());
+            throw new BizException("订单创建失败：" + e.getMessage(), e);
         }
 
         // ⑤ 事务提交后再发 MQ
@@ -131,37 +131,33 @@ public class CheckoutService {
      * 发送订单消息（供事务提交后回调和定时任务调用）
      */
     public void sendOrderMessage(Long orderId) {
-        // 查询待发送的消息
+        // 原子认领消息（UPDATE status=1 WHERE status=0），防止 afterCommit 与定时任务并发
+        int claimed = orderMessageMapper.claimForSending(orderId);
+        if (claimed == 0) {
+            log.warn("订单消息已被发送或不存在, orderId={}", orderId);
+            return;
+        }
+
         OrderMessage message = orderMessageMapper.selectOne(
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<OrderMessage>()
-                        .eq(OrderMessage::getOrderId, orderId)
-                        .eq(OrderMessage::getStatus, 0)
-        );
-
+                        .eq(OrderMessage::getOrderId, orderId));
         if (message == null) {
-            log.warn("订单消息不存在或已发送, orderId={}", orderId);
             return;
         }
 
         try {
-            // 发送 MQ
             OrderCreatedEvent event = objectMapper.readValue(message.getMessageBody(), OrderCreatedEvent.class);
             rabbitTemplate.convertAndSend("islehub.order.topic", "order.stock.confirm", event);
-
-            // 发送成功，更新状态为"已发送"
-            message.setStatus(1);
-            message.setUpdatedAt(LocalDateTime.now());
-            orderMessageMapper.updateById(message);
-
             log.info("订单消息发送成功, orderId={}", orderId);
         } catch (Exception e) {
             log.error("订单消息发送失败, orderId={}", orderId, e);
 
-            // 发送失败，更新重试次数和状态
+            // 发送失败，回退状态供重试
+            message.setStatus(0);
             message.setRetryCount(message.getRetryCount() + 1);
             message.setErrorMsg(e.getMessage());
             if (message.getRetryCount() >= 3) {
-                message.setStatus(2);  // 发送失败，需要人工介入
+                message.setStatus(2);
             }
             message.setUpdatedAt(LocalDateTime.now());
             orderMessageMapper.updateById(message);

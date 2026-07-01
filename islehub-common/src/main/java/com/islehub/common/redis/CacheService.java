@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.util.Arrays;
+import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Supplier;
 
@@ -51,8 +52,9 @@ public class CacheService {
 
         // 2. 缓存未命中，尝试获取互斥锁（防击穿）
         String lockKey = key + LOCK_SUFFIX;
+        String lockValue = UUID.randomUUID().toString();
         boolean locked = Boolean.TRUE.equals(
-                redisTemplate.opsForValue().setIfAbsent(lockKey, "1", Duration.ofSeconds(5)));
+                redisTemplate.opsForValue().setIfAbsent(lockKey, lockValue, Duration.ofSeconds(5)));
 
         if (!locked) {
             // 未获取锁，短暂休眠后重试读缓存
@@ -74,8 +76,9 @@ public class CacheService {
                         log.warn("Redis 重试反序列化失败, key={}", key);
                     }
                 }
+                lockValue = UUID.randomUUID().toString();
                 locked = Boolean.TRUE.equals(
-                        redisTemplate.opsForValue().setIfAbsent(lockKey, "1", Duration.ofSeconds(5)));
+                        redisTemplate.opsForValue().setIfAbsent(lockKey, lockValue, Duration.ofSeconds(5)));
                 if (locked) break;
             }
 
@@ -118,8 +121,11 @@ public class CacheService {
             }
             return result;
         } finally {
-            // 5. 释放锁
-            redisTemplate.delete(lockKey);
+            // 5. 释放锁：比对 UUID 归属，防止锁过期后被其他线程占用时误删
+            String currentValue = redisTemplate.opsForValue().get(lockKey);
+            if (lockValue.equals(currentValue)) {
+                redisTemplate.delete(lockKey);
+            }
         }
     }
 

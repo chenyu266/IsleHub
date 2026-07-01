@@ -14,6 +14,7 @@ import com.islehub.product.mapper.ProductMapper;
 import com.islehub.product.service.CategoryService;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.Serializable;
 import java.time.Duration;
@@ -145,6 +146,7 @@ public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category> i
     }
 
     @Override
+    @Transactional
     public boolean removeById(Serializable id) {
         Category category = getById(id);
         if (category == null) {

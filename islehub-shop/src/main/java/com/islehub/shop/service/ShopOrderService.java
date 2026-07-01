@@ -61,8 +61,10 @@ public class ShopOrderService {
                 userId, address.getReceiverName(), address.getReceiverPhone(),
                 receiverAddress, remark, items);
 
-        // ⑤ 清空购物车
-        cartService.clear(userId);
+        // ⑤ 只移除已下单的商品（不清空整个购物车，避免丢失并发新增的商品）
+        for (CartService.CartItem ci : cartItems) {
+            cartService.remove(userId, ci.getSkuId());
+        }
 
         return result;
     }

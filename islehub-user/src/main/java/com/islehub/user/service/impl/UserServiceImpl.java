@@ -16,6 +16,7 @@ import com.islehub.user.mapper.UserMapper;
 import com.islehub.user.service.UserService;
 import com.islehub.user.util.EmailCheckUtil;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import jakarta.servlet.http.HttpServletRequest;
@@ -34,6 +35,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements UserService {
@@ -77,24 +79,41 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (!StringUtils.hasText(account) || !StringUtils.hasText(password)) {
             return Result.fail(RCode.BAD_REQUEST, "邮箱/用户名和密码不能为空");
         }
-        String lockKey = RedisKeys.loginLock(account);
-        if (Boolean.TRUE.equals(stringRedisTemplate.hasKey(lockKey))) {
+
+        // 标准化账号：去空白 + 邮箱小写化，防止大小写绕过锁键
+        account = account.trim();
+        account = account.contains("@") ? account.toLowerCase() : account;
+
+        // 账号级限流（覆盖未知账户枚举）
+        String accountLockKey = RedisKeys.loginLock(account);
+        if (Boolean.TRUE.equals(stringRedisTemplate.hasKey(accountLockKey))) {
             return Result.fail(RCode.TOO_MANY_REQUESTS, "账号已锁定2分钟，请稍后再试");
         }
+
         boolean isEmail = account.contains("@");
         User user = isEmail
                 ? lambdaQuery().eq(User::getEmail, account).one()
                 : lambdaQuery().eq(User::getUsername, account).one();
         if (user == null) {
+            // 未知账户：记录失败，防止枚举
+            incrementLoginFail(account, accountLockKey);
             return Result.fail(RCode.UNAUTHORIZED, "账号或密码错误");
+        }
+
+        // 用户级锁定（防止同一用户用不同 account 绕过）
+        String userLockKey = RedisKeys.loginLock(String.valueOf(user.getId()));
+        if (Boolean.TRUE.equals(stringRedisTemplate.hasKey(userLockKey))) {
+            return Result.fail(RCode.TOO_MANY_REQUESTS, "账号已锁定2分钟，请稍后再试");
         }
         if (user.getStatus() == null || user.getStatus() == 0) {
             return Result.fail(RCode.FORBIDDEN, "账号已被禁用");
         }
         if (!BCrypt.checkpw(password, user.getPassword())) {
-            String failKey = RedisKeys.loginFail(account);
+            // 密码错误：同时记录账号级和用户级失败
+            incrementLoginFail(account, accountLockKey);
+            String userFailKey = RedisKeys.loginFail(String.valueOf(user.getId()));
             Long result = stringRedisTemplate.execute(LOGIN_FAIL_SCRIPT,
-                    List.of(failKey, lockKey),
+                    List.of(userFailKey, userLockKey),
                     String.valueOf(RedisKeys.LOGIN_FAIL_WINDOW.getSeconds()),
                     String.valueOf(RedisKeys.LOGIN_LOCK_TTL.getSeconds()),
                     "3");
@@ -104,7 +123,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             return Result.fail(RCode.UNAUTHORIZED, "账号或密码错误");
         }
         StpUtil.login(user.getId());
+        user.setPassword(null);
         StpUtil.getSession().set("user", user);
+        stringRedisTemplate.delete(RedisKeys.loginFail(String.valueOf(user.getId())));
         stringRedisTemplate.delete(RedisKeys.loginFail(account));
         user.setLastLoginTime(LocalDateTime.now());
         user.setLastLoginIp(request.getRemoteAddr());
@@ -134,6 +155,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         try {
             emailCheckUtil.sendCode(email, code);
         } catch (Exception e) {
+            log.warn("发送邮件失败 email={}", email, e);
             stringRedisTemplate.delete(RedisKeys.emailVerifyCode(email));
             throw new BizException(emailCheckUtil.errorMatcher(e.getMessage()));
         }
@@ -152,40 +174,67 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 .ne(User::getId, userId).one() != null) {
             throw new BizException("该邮箱已被其他账号使用");
         }
+        // 暂存新邮箱（供后续步骤校验使用）
+        stringRedisTemplate.opsForValue()
+                .set(RedisKeys.emailChangePending(userId), newEmail, RedisKeys.EMAIL_CODE_TTL);
         // 向当前邮箱发送验证码
         sendCodeToEmail(user.getEmail(), RedisKeys.emailChangeCode(user.getEmail()));
     }
 
     @Override
-    public void changeEmail(Long userId, String newEmail, String oldCode, String newCode) {
+    public void verifyOldEmailCode(Long userId, String oldCode) {
         User user = getById(userId);
         if (user == null) {
             throw new BizException("用户不存在");
         }
 
-        if (newEmail.equals(user.getEmail())) {
-            throw new BizException("新邮箱不能与当前邮箱相同");
-        }
-
         // 验证旧邮箱验证码
         String oldEmail = user.getEmail();
-        String savedOldCode = stringRedisTemplate.opsForValue()
+        String savedCode = stringRedisTemplate.opsForValue()
                 .get(RedisKeys.emailChangeCode(oldEmail));
-        if (savedOldCode == null) {
-            throw new BizException("旧邮箱验证码已过期，请重新发送");
+        if (savedCode == null) {
+            throw new BizException("验证码已过期，请重新发送");
         }
-        if (!savedOldCode.equals(oldCode)) {
-            throw new BizException("旧邮箱验证码错误");
+        if (!savedCode.equals(oldCode)) {
+            incrementAttempts(oldEmail, RedisKeys.emailChangeCode(oldEmail));
+            throw new BizException("验证码错误");
         }
 
-        // 验证新邮箱验证码（独立 key，与注册验证码隔离）
-        String savedNewCode = stringRedisTemplate.opsForValue()
-                .get(RedisKeys.emailChangeNewCode(newEmail));
-        if (savedNewCode == null) {
-            throw new BizException("新邮箱验证码已过期，请重新发送");
+        // 取出待绑定新邮箱，向其发送验证码
+        String newEmail = stringRedisTemplate.opsForValue()
+                .get(RedisKeys.emailChangePending(userId));
+        if (newEmail == null) {
+            throw new BizException("操作已过期，请重新发起换绑");
         }
-        if (!savedNewCode.equals(newCode)) {
-            throw new BizException("新邮箱验证码错误");
+        sendCodeToEmail(newEmail, RedisKeys.emailChangeNewCode(newEmail));
+
+        // 清除旧邮箱验证码（防止复用）
+        stringRedisTemplate.delete(RedisKeys.emailChangeCode(oldEmail));
+    }
+
+    @Override
+    public void confirmNewEmail(Long userId, String newCode) {
+        User user = getById(userId);
+        if (user == null) {
+            throw new BizException("用户不存在");
+        }
+
+        // 取出待绑定新邮箱
+        String newEmail = stringRedisTemplate.opsForValue()
+                .get(RedisKeys.emailChangePending(userId));
+        if (newEmail == null) {
+            throw new BizException("操作已过期，请重新发起换绑");
+        }
+
+        // 验证新邮箱验证码
+        String savedCode = stringRedisTemplate.opsForValue()
+                .get(RedisKeys.emailChangeNewCode(newEmail));
+        if (savedCode == null) {
+            throw new BizException("验证码已过期，请重新发送");
+        }
+        if (!savedCode.equals(newCode)) {
+            incrementAttempts(newEmail, RedisKeys.emailChangeNewCode(newEmail));
+            throw new BizException("验证码错误");
         }
 
         // 二次确认新邮箱未被占用
@@ -207,8 +256,33 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
 
         // 清理 Redis
-        stringRedisTemplate.delete(RedisKeys.emailChangeCode(oldEmail));
+        stringRedisTemplate.delete(RedisKeys.emailChangePending(userId));
         stringRedisTemplate.delete(RedisKeys.emailChangeNewCode(newEmail));
+    }
+
+    private static final int MAX_CODE_ATTEMPTS = 5;
+
+    private void incrementLoginFail(String account, String lockKey) {
+        String failKey = RedisKeys.loginFail(account);
+        Long result = stringRedisTemplate.execute(LOGIN_FAIL_SCRIPT,
+                List.of(failKey, lockKey),
+                String.valueOf(RedisKeys.LOGIN_FAIL_WINDOW.getSeconds()),
+                String.valueOf(RedisKeys.LOGIN_LOCK_TTL.getSeconds()),
+                "3");
+    }
+
+    private void incrementAttempts(String email, String codeKey) {
+        String attemptKey = RedisKeys.emailCodeAttempts(email);
+        Long attempts = stringRedisTemplate.opsForValue().increment(attemptKey);
+        if (attempts == null) return;
+        if (attempts == 1) {
+            stringRedisTemplate.expire(attemptKey, RedisKeys.EMAIL_CODE_TTL);
+        }
+        if (attempts >= MAX_CODE_ATTEMPTS) {
+            stringRedisTemplate.delete(codeKey);
+            stringRedisTemplate.delete(attemptKey);
+            throw new BizException("验证码尝试次数过多，已失效，请重新发送");
+        }
     }
 
     private void sendCodeToEmail(String email, String codeKey) {
@@ -224,6 +298,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         try {
             emailCheckUtil.sendCode(email, code);
         } catch (Exception e) {
+            log.warn("发送邮件失败 email={}", email, e);
             stringRedisTemplate.delete(codeKey);
             throw new BizException(emailCheckUtil.errorMatcher(e.getMessage()));
         }
@@ -253,14 +328,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Override
     public void register(UserRegisterDTO dto) {
-        String codeKey = RedisKeys.emailVerifyCode(dto.getEmail());
-        String savedCode = stringRedisTemplate.opsForValue().get(codeKey);
-        if (savedCode == null) {
-            throw new BizException("验证码已过期，请重新发送");
-        }
-        if (!savedCode.equals(dto.getEmailConfirmCode())) {
-            throw new BizException("验证码错误");
-        }
+        // 先做业务校验（不消耗验证码）
         if (!dto.getPassword().equals(dto.getConfirmPassword())) {
             throw new BizException("两次输入的密码不一致");
         }
@@ -271,6 +339,17 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             throw new BizException("用户名已存在");
         }
 
+        // 验证码校验放在最后，通过后立即删除
+        String codeKey = RedisKeys.emailVerifyCode(dto.getEmail());
+        String savedCode = stringRedisTemplate.opsForValue().get(codeKey);
+        if (savedCode == null) {
+            throw new BizException("验证码已过期，请重新发送");
+        }
+        if (!savedCode.equals(dto.getEmailConfirmCode())) {
+            throw new BizException("验证码错误");
+        }
+        stringRedisTemplate.delete(codeKey);
+
         User user = new User();
         user.setUsername(dto.getUsername());
         user.setEmail(dto.getEmail());
@@ -278,7 +357,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         user.setRole("customer");
         user.setStatus(1);
         save(user);
-        stringRedisTemplate.delete(codeKey);
     }
 
     @Override
@@ -435,5 +513,4 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (dot <= 0 || dot == filename.length() - 1) return "";
         return filename.substring(dot + 1);
     }
-
 }

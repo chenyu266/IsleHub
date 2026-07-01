@@ -19,6 +19,12 @@ public class WebMvcConfig implements WebMvcConfigurer {
         if (!dir.isAbsolute()) {
             dir = new File(System.getProperty("user.dir"), uploadPath);
         }
+        // 规范化路径，防止 .. 穿越
+        try {
+            dir = dir.getCanonicalFile();
+        } catch (java.io.IOException e) {
+            throw new RuntimeException("上传路径无效: " + uploadPath, e);
+        }
         registry.addResourceHandler("/uploads/**")
                 .addResourceLocations("file:" + dir.getAbsolutePath() + File.separator);
     }

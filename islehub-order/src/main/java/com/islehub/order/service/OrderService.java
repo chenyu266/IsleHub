@@ -14,7 +14,7 @@ public interface OrderService extends IService<Order> {
     void createOrder(Order order, List<OrderItem> items);
     void updateStatus(Long id, String status);
     void cancelOrder(Long id);
-    void addShipping(OrderShipping shipping);
+    void addShipping(Long orderId, String carrier, String trackingNo);
     List<Order> exportOrders(String orderNo, String status, String startDate, String endDate);
     byte[] exportOrdersExcel(String orderNo, String status, String startDate, String endDate);
 
