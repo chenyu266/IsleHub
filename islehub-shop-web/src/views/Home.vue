@@ -194,7 +194,7 @@
 <script setup>
 import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus/es/components/message/index.mjs'
+import { ElMessage } from 'element-plus'
 import { Document, Folder, HomeFilled, Location, ShoppingCart, SwitchButton, User } from '@element-plus/icons-vue'
 import { pageProducts, getCategoryTree } from '../api/product'
 import { getAddresses } from '../api/address'
