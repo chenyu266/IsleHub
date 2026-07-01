@@ -12,6 +12,14 @@ import ShopHeader from '../components/ShopHeader.vue'
 </script>
 
 <style scoped>
-.shop-layout { min-height: 100vh; background: #f5f7fa; }
-.shop-main { max-width: 1200px; margin: 0 auto; padding: 20px; }
+.shop-layout {
+  min-height: 100vh;
+  background: transparent;
+}
+
+.shop-main {
+  width: min(1240px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 24px 0 40px;
+}
 </style>

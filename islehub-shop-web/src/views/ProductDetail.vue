@@ -45,7 +45,7 @@
           {{ addingToCart ? '加入中...' : '加入购物车' }}
         </button>
         <button class="btn-buy" :disabled="actionPending" @click="buyNow">
-          {{ buyingNow ? '处理中...' : '立即购买' }}
+          {{ buyingNow ? '处理中...' : '加入并去购物车' }}
         </button>
       </div>
       <div class="desc" v-if="product.description">
@@ -200,24 +200,151 @@ async function buyNow() {
 </script>
 
 <style scoped>
-.product-detail { display: flex; gap: 40px; background: #fff; padding: 30px; border-radius: 8px; }
-.detail-image { width: 420px; height: 420px; display: flex; align-items: center; justify-content: center; background: #f5f7fa; border-radius: 8px; }
-.detail-image img { max-width: 100%; max-height: 100%; object-fit: contain; }
-.no-image { color: #ccc; font-size: 16px; }
-.detail-info { flex: 1; }
-.detail-info h2 { font-size: 22px; margin-bottom: 12px; }
-.price { font-size: 28px; color: #e4393c; font-weight: bold; margin-bottom: 4px; }
-.price-detail { font-size: 13px; color: #999; margin-bottom: 16px; }
-.section { margin-bottom: 20px; }
-.section-title { font-size: 14px; color: #999; margin-bottom: 8px; }
-.quantity-ctrl { display: flex; align-items: center; gap: 8px; }
-.quantity-input { width: 140px; }
-.stock-tip { font-size: 12px; color: #999; }
-.actions { display: flex; gap: 16px; margin-top: 30px; }
-.btn-cart { padding: 12px 30px; font-size: 16px; background: #409eff; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
-.btn-buy { padding: 12px 30px; font-size: 16px; background: #e4393c; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+.product-detail {
+  display: flex;
+  gap: 40px;
+  background: var(--shop-surface);
+  border: 1px solid var(--shop-border);
+  border-radius: var(--shop-radius);
+  padding: 30px;
+  box-shadow: var(--shop-shadow-sm);
+}
+
+.detail-image {
+  width: 420px;
+  height: 420px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: linear-gradient(135deg, #f8fafc, #eef2f6);
+  border: 1px solid var(--shop-border);
+  border-radius: var(--shop-radius);
+  flex-shrink: 0;
+}
+
+.detail-image img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.no-image {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  border: 1px dashed var(--shop-border-strong);
+  border-radius: var(--shop-radius-sm);
+  color: var(--shop-text-subtle);
+  font-size: 16px;
+  background: rgba(255,255,255,.58);
+}
+
+.detail-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.detail-info h2 {
+  margin: 0 0 14px;
+  color: var(--shop-text);
+  font-size: 24px;
+  line-height: 1.45;
+}
+
+.price {
+  margin-bottom: 4px;
+  color: var(--shop-price);
+  font-size: 30px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.price-detail {
+  margin-bottom: 18px;
+  color: var(--shop-text-subtle);
+  font-size: 13px;
+}
+
+.section {
+  margin-bottom: 22px;
+}
+
+.section-title {
+  margin-bottom: 10px;
+  color: var(--shop-text-muted);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.quantity-ctrl {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.quantity-input {
+  width: 140px;
+}
+
+.stock-tip {
+  color: var(--shop-text-subtle);
+  font-size: 12px;
+}
+
+.actions {
+  display: flex;
+  gap: 14px;
+  margin-top: 30px;
+}
+
+.btn-cart,
+.btn-buy {
+  min-width: 132px;
+  height: 44px;
+  padding: 0 28px;
+  border: none;
+  border-radius: var(--shop-radius-sm);
+  color: #fff;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 700;
+  transition: background var(--shop-transition), box-shadow var(--shop-transition), opacity var(--shop-transition);
+}
+
+.btn-cart {
+  background: var(--shop-primary);
+}
+
+.btn-cart:hover {
+  background: var(--shop-primary-hover);
+}
+
+.btn-buy {
+  background: var(--shop-price);
+}
+
+.btn-buy:hover {
+  background: #b91c1c;
+}
+
 .btn-cart:disabled,
-.btn-buy:disabled { background: #c0c4cc; cursor: not-allowed; }
-.desc { margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; }
-.desc p { color: #666; line-height: 1.8; }
+.btn-buy:disabled {
+  background: #cbd5e1;
+  cursor: not-allowed;
+  opacity: .72;
+}
+
+.desc {
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid var(--shop-border);
+}
+
+.desc p {
+  color: var(--shop-text-muted);
+  line-height: 1.8;
+}
 </style>

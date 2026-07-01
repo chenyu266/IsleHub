@@ -13,6 +13,8 @@ const routes = [
       { path: 'checkout', name: 'Checkout', component: () => import('../views/Checkout.vue') },
       { path: 'orders', name: 'MyOrders', component: () => import('../views/MyOrders.vue') },
       { path: 'order/:id', name: 'OrderDetail', component: () => import('../views/OrderDetail.vue') },
+      { path: 'profile', name: 'Profile', component: () => import('../views/Profile.vue') },
+      { path: 'account-settings', name: 'AccountSettings', component: () => import('../views/AccountSettings.vue') },
       { path: 'address', name: 'AddressList', component: () => import('../views/AddressList.vue') },
     ]
   }
@@ -27,7 +29,7 @@ router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('shop-token')
   const publicPaths = ['/login', '/register', '/']
   if (!token && !publicPaths.includes(to.path) && !to.path.startsWith('/product/')) {
-    next('/login')
+    next({ path: '/login', query: { redirect: to.fullPath } })
   } else {
     next()
   }

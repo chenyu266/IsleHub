@@ -80,14 +80,87 @@ async function handleCancel() {
 </script>
 
 <style scoped>
-.order-detail { background: #fff; padding: 30px; border-radius: 8px; }
-.order-detail h2 { margin-bottom: 20px; }
-.info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f5f5f5; }
-.status { color: #409eff; font-weight: bold; }
-.section { margin-top: 20px; }
-.section-title { font-weight: bold; color: #666; margin-bottom: 8px; }
-.item-row { display: flex; justify-content: space-between; padding: 6px 0; }
-.total-row { text-align: right; margin-top: 8px; padding-top: 8px; border-top: 1px solid #eee; }
-.total-row b { font-size: 20px; color: #e4393c; }
-.actions { margin-top: 30px; display: flex; gap: 12px; }
+.order-detail {
+  background: var(--shop-surface);
+  border: 1px solid var(--shop-border);
+  border-radius: var(--shop-radius);
+  padding: 30px;
+  box-shadow: var(--shop-shadow-sm);
+}
+
+.order-detail h2 {
+  margin: 0 0 22px;
+  color: var(--shop-text);
+  font-size: 24px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--shop-border);
+  color: var(--shop-text);
+}
+
+.info-row > span:first-child {
+  color: var(--shop-text-muted);
+  font-weight: 700;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--shop-primary-soft);
+  color: var(--shop-primary);
+  font-weight: 800;
+}
+
+.section {
+  margin-top: 22px;
+  padding-top: 4px;
+  color: var(--shop-text-muted);
+  line-height: 1.7;
+}
+
+.section-title {
+  margin-bottom: 10px;
+  color: var(--shop-text);
+  font-weight: 800;
+}
+
+.item-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--shop-border);
+}
+
+.item-row span:last-child {
+  color: var(--shop-price);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.total-row {
+  margin-top: 10px;
+  padding-top: 10px;
+  text-align: right;
+}
+
+.total-row b {
+  color: var(--shop-price);
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+}
+
+.actions {
+  margin-top: 30px;
+  display: flex;
+  gap: 12px;
+}
 </style>

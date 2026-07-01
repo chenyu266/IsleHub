@@ -7,6 +7,20 @@ export const login = (data = {}) => userRequest.post('/login', {
 })
 export const getInfo = () => userRequest.get('/info')
 
+export const updateUsername = (username) => userRequest.put('/username', { username })
+
+export const updatePassword = (data) => userRequest.put('/password', data)
+
+export const uploadAvatar = (file) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  return userRequest.post('/avatar', formData)
+}
+
+export const sendChangeEmailCode = (newEmail) => userRequest.post('/email/change', { newEmail })
+
+export const changeEmail = (data) => userRequest.put('/email', data)
+
 // 注册 → 复用 /api/user/register 接口
 export const register = (data) => userRequest.post('/register', data)
 

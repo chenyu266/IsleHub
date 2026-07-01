@@ -1,5 +1,6 @@
 import { createApp } from 'vue'
 import { ElButton } from 'element-plus/es/components/button/index.mjs'
+import { ElCarousel, ElCarouselItem } from 'element-plus/es/components/carousel/index.mjs'
 import { ElCascader } from 'element-plus/es/components/cascader/index.mjs'
 import { ElCheckbox } from 'element-plus/es/components/checkbox/index.mjs'
 import { ElDialog } from 'element-plus/es/components/dialog/index.mjs'
@@ -12,6 +13,7 @@ import { ElSkeleton, ElSkeletonItem } from 'element-plus/es/components/skeleton/
 import { ElSwitch } from 'element-plus/es/components/switch/index.mjs'
 import { ElTag } from 'element-plus/es/components/tag/index.mjs'
 import 'element-plus/es/components/button/style/css'
+import 'element-plus/es/components/carousel/style/css'
 import 'element-plus/es/components/cascader/style/css'
 import 'element-plus/es/components/checkbox/style/css'
 import 'element-plus/es/components/dialog/style/css'
@@ -28,10 +30,13 @@ import 'element-plus/es/components/switch/style/css'
 import 'element-plus/es/components/tag/style/css'
 import App from './App.vue'
 import router from './router'
+import './styles/shop-theme.css'
 
 const app = createApp(App)
 ;[
   ElButton,
+  ElCarousel,
+  ElCarouselItem,
   ElCascader,
   ElCheckbox,
   ElDialog,

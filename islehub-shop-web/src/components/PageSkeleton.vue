@@ -9,6 +9,7 @@
         <div class="banner-copy">
           <el-skeleton-item variant="text" class="eyebrow-line" />
           <el-skeleton-item variant="h1" class="hero-title-line" />
+          <el-skeleton-item variant="h3" class="price-line" />
           <el-skeleton-item variant="text" class="hint-line" />
         </div>
         <el-skeleton-item variant="image" class="banner-image" />
@@ -145,20 +146,23 @@ defineProps({
 .category-line:nth-child(2n) { width: 66%; }
 .banner-skeleton {
   height: 100%;
-  min-height: 320px;
-  display: flex;
+  min-height: 380px;
+  display: grid;
+  grid-template-columns: minmax(0, .9fr) minmax(360px, 1.1fr);
   align-items: center;
-  justify-content: space-between;
-  gap: 32px;
-  padding: 44px;
-  border-radius: 12px;
-  background: #fff;
+  gap: 34px;
+  padding: 40px 46px;
+  border: 1px solid var(--shop-border);
+  border-radius: var(--shop-radius);
+  background: linear-gradient(100deg, #f8fafc 0%, #fff 44%, #eef4f8 100%);
+  box-shadow: var(--shop-shadow-sm);
 }
-.banner-copy { flex: 1; }
+.banner-copy { min-width: 0; }
 .eyebrow-line { width: 140px; height: 16px; }
-.hero-title-line { width: min(360px, 75%); height: 42px; margin-top: 18px; }
-.hint-line { width: 160px; height: 16px; margin-top: 18px; }
-.banner-image { width: 38%; max-width: 300px; height: 220px; border-radius: 16px; }
+.hero-title-line { width: min(420px, 82%); height: 42px; margin-top: 18px; }
+.price-line { width: 120px; height: 28px; margin-top: 18px; }
+.hint-line { width: 128px; height: 30px; margin-top: 18px; }
+.banner-image { width: 100%; height: 260px; border-radius: 16px; }
 .user-panel-skeleton {
   display: flex;
   flex-direction: column;
@@ -183,8 +187,10 @@ defineProps({
 }
 .product-card-skeleton {
   overflow: hidden;
-  border-radius: 8px;
-  background: #fff;
+  border: 1px solid var(--shop-border);
+  border-radius: var(--shop-radius);
+  background: var(--shop-surface);
+  box-shadow: var(--shop-shadow-sm);
 }
 .product-image { width: 100%; height: 200px; }
 .product-name { width: 84%; margin: 14px 12px 0; }
@@ -192,11 +198,13 @@ defineProps({
 .detail-skeleton {
   display: flex;
   gap: 40px;
-  background: #fff;
-  border-radius: 8px;
+  background: var(--shop-surface);
+  border: 1px solid var(--shop-border);
+  border-radius: var(--shop-radius);
   padding: 30px;
+  box-shadow: var(--shop-shadow-sm);
 }
-.detail-image { width: 420px; height: 420px; border-radius: 8px; flex-shrink: 0; }
+.detail-image { width: 420px; height: 420px; border-radius: var(--shop-radius); flex-shrink: 0; }
 .detail-copy { flex: 1; }
 .detail-title { width: 58%; height: 32px; }
 .detail-price { width: 180px; height: 36px; margin-top: 18px; }
@@ -225,7 +233,7 @@ defineProps({
   align-items: center;
   gap: 16px;
   padding: 16px 0;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--shop-border);
 }
 .checkbox-box { width: 14px; height: 14px; border-radius: 2px; }
 .cart-image { width: 80px; height: 80px; border-radius: 4px; flex-shrink: 0; }
@@ -244,9 +252,10 @@ defineProps({
 }
 .checkout-address,
 .address-card-skeleton {
-  border-radius: 8px;
+  border-radius: var(--shop-radius-sm);
   padding: 12px;
-  border: 2px solid #f0f2f5;
+  border: 1px solid var(--shop-border);
+  background: var(--shop-surface);
 }
 .address-name { width: 42%; }
 .address-detail { width: 82%; margin-top: 10px; }
@@ -260,7 +269,7 @@ defineProps({
   align-items: center;
   gap: 16px;
   padding: 8px 0;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--shop-border);
 }
 .checkout-image { width: 50px; height: 50px; border-radius: 4px; }
 .checkout-name { flex: 1; max-width: 460px; }
@@ -271,9 +280,10 @@ defineProps({
   gap: 12px;
 }
 .order-card {
-  border: 1px solid #eee;
-  border-radius: 8px;
+  border: 1px solid var(--shop-border);
+  border-radius: var(--shop-radius);
   padding: 16px;
+  background: var(--shop-surface);
 }
 .order-head,
 .order-body {

@@ -95,7 +95,9 @@ async function sendCode() {
         countdownTimer = null
       }
     }, 1000)
-  } catch { /* 错误消息已由拦截器处理 */ }
+  } catch (error) {
+    ElMessage.error(error.message || '验证码发送失败')
+  }
   finally { codeSending.value = false }
 }
 
@@ -113,7 +115,9 @@ async function handleRegister() {
     })
     ElMessage.success('注册成功，请登录')
     router.push('/login')
-  } catch { /* 错误消息已由拦截器处理 */ }
+  } catch (error) {
+    ElMessage.error(error.message || '注册失败')
+  }
   finally { submitting.value = false }
 }
 
@@ -135,10 +139,53 @@ function validateConfirmPassword(_rule, value, callback) {
 </script>
 
 <style scoped>
-.auth-page { display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #f5f7fa; }
-.auth-card { width: 420px; padding: 40px; background: #fff; border-radius: 8px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
-.auth-card h2 { text-align: center; margin-bottom: 24px; color: #333; }
-.code-row { display: flex; gap: 8px; width: 100%; }
-.switch-text { text-align: center; color: #999; font-size: 14px; }
-.switch-text a { color: #409eff; }
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 32px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(37,99,235,.10), transparent 30%),
+    var(--shop-bg);
+}
+
+.auth-card {
+  width: 420px;
+  padding: 40px;
+  background: var(--shop-surface);
+  border: 1px solid var(--shop-border);
+  border-radius: var(--shop-radius);
+  box-shadow: var(--shop-shadow);
+}
+
+.auth-card h2 {
+  margin: 0 0 26px;
+  text-align: center;
+  color: var(--shop-text);
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.auth-card :deep(.el-form-item) {
+  margin-bottom: 18px;
+}
+
+.code-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.switch-text {
+  margin: 12px 0 0;
+  text-align: center;
+  color: var(--shop-text-subtle);
+  font-size: 14px;
+}
+
+.switch-text a {
+  color: var(--shop-primary);
+  font-weight: 700;
+}
 </style>

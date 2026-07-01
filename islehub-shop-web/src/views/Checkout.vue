@@ -6,12 +6,18 @@
       <PageSkeleton v-if="loading" variant="checkout-addresses" />
       <div v-else-if="addresses.length === 0">请先 <router-link to="/address">添加收货地址</router-link></div>
       <div class="address-list" v-else>
-        <div class="address-card" v-for="addr in addresses" :key="addr.id"
-             :class="{ selected: selectedAddressId === addr.id, disabled: submitting }"
-             @click="selectAddress(addr.id)">
+        <button
+          v-for="addr in addresses"
+          :key="addr.id"
+          type="button"
+          class="address-card"
+          :class="{ selected: selectedAddressId === addr.id }"
+          :disabled="submitting"
+          @click="selectAddress(addr.id)"
+        >
           <div><b>{{ addr.receiverName }}</b> {{ addr.receiverPhone }}</div>
           <div class="addr-detail">{{ addr.province }}{{ addr.city }}{{ addr.district }} {{ addr.detail }}</div>
-        </div>
+        </button>
       </div>
     </div>
     <div class="section">
@@ -52,14 +58,12 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus/es/components/message/index.mjs'
-import { addToCart, getCart, removeFromCart } from '../api/cart'
+import { getCart } from '../api/cart'
 import { getAddresses } from '../api/address'
 import { checkout } from '../api/order'
 import PageSkeleton from '../components/PageSkeleton.vue'
-import { clearCheckoutSelectedSkuIds, readCheckoutSelectedSkuIds } from '../utils/checkoutSelection'
 
 const router = useRouter()
-const allCartItems = ref([])
 const cartItems = ref([])
 const addresses = ref([])
 const selectedAddressId = ref(null)
@@ -69,7 +73,7 @@ const loading = ref(true)
 
 onMounted(async () => {
   try {
-    await loadSelectedCartItems()
+    await loadCartItems()
     try { addresses.value = (await getAddresses()).data || [] } catch { ElMessage.error('加载地址失败') }
     if (addresses.value.length > 0) {
       const def = addresses.value.find(a => a.isDefault === 1)
@@ -87,32 +91,16 @@ function selectAddress(id) {
   selectedAddressId.value = id
 }
 
-async function loadSelectedCartItems() {
+async function loadCartItems() {
   try {
-    const selectedSkuIds = readCheckoutSelectedSkuIds().map(String)
-    if (selectedSkuIds.length === 0) {
-      ElMessage.warning('请先在购物车选择要结算的商品')
-      router.replace('/cart')
-      return
-    }
-
-    const selectedSkuSet = new Set(selectedSkuIds)
-    allCartItems.value = ((await getCart()).data || []).map(item => ({ ...item, imageFailed: false }))
-    cartItems.value = allCartItems.value.filter(item => selectedSkuSet.has(String(item.skuId)))
+    cartItems.value = ((await getCart()).data || []).map(item => ({ ...item, imageFailed: false }))
 
     if (cartItems.value.length === 0) {
-      ElMessage.warning('选中的商品已不在购物车中')
-      clearCheckoutSelectedSkuIds()
+      ElMessage.warning('购物车暂无可结算商品')
       router.replace('/cart')
     }
   } catch {
     ElMessage.error('加载购物车失败')
-  }
-}
-
-async function restoreCartItems(items) {
-  for (const item of items) {
-    await addToCart({ skuId: item.skuId, quantity: item.quantity })
   }
 }
 
@@ -122,26 +110,9 @@ async function submitOrder() {
   if (submitting.value) return
 
   submitting.value = true
-  const selectedSkuSet = new Set(cartItems.value.map(item => String(item.skuId)))
-  const unselectedItems = allCartItems.value.filter(item => !selectedSkuSet.has(String(item.skuId)))
-  const removedUnselectedItems = []
 
   try {
-    for (const item of unselectedItems) {
-      await removeFromCart(item.skuId)
-      removedUnselectedItems.push(item)
-    }
-
     const res = await checkout({ addressId: selectedAddressId.value, remark: remark.value })
-    if (removedUnselectedItems.length > 0) {
-      try {
-        await restoreCartItems(removedUnselectedItems)
-      } catch {
-        ElMessage.warning('订单已提交，但未选商品恢复失败，请重新加入购物车')
-      }
-    }
-
-    clearCheckoutSelectedSkuIds()
     const warnings = res.data?.warnings
     if (warnings && warnings.length > 0) {
       warnings.forEach(w => ElMessage.warning(w))
@@ -149,13 +120,6 @@ async function submitOrder() {
     ElMessage.success('下单成功')
     router.push('/orders')
   } catch {
-    if (removedUnselectedItems.length > 0) {
-      try {
-        await restoreCartItems(removedUnselectedItems)
-      } catch {
-        ElMessage.warning('未选商品恢复失败，请刷新购物车确认')
-      }
-    }
     ElMessage.error('下单失败')
   } finally {
     submitting.value = false
@@ -164,21 +128,155 @@ async function submitOrder() {
 </script>
 
 <style scoped>
-.checkout-page { background: #fff; padding: 30px; border-radius: 8px; }
-.checkout-page h2 { margin-bottom: 20px; }
-.section { margin-bottom: 24px; }
-.section-title { font-size: 14px; color: #666; margin-bottom: 10px; font-weight: bold; }
-.address-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
-.address-card { border: 2px solid #e4e7ed; border-radius: 8px; padding: 12px; cursor: pointer; }
-.address-card.selected { border-color: #409eff; background: #ecf5ff; }
-.address-card.disabled { cursor: not-allowed; opacity: .7; }
-.addr-detail { color: #999; font-size: 13px; margin-top: 4px; }
-.order-item { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 8px 0; border-bottom: 1px solid #eee; }
-.order-item-main { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.order-item-img { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; }
-.order-item-placeholder { width: 50px; height: 50px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; background: #f5f7fa; border-radius: 4px; color: #bbb; font-size: 12px; }
-.checkout-footer { display: flex; justify-content: flex-end; align-items: center; gap: 20px; padding-top: 16px; border-top: 2px solid #eee; }
-.checkout-footer b { font-size: 22px; color: #e4393c; }
-.btn-submit { padding: 12px 32px; font-size: 16px; background: #e4393c; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
-.btn-submit:disabled { background: #c0c4cc; cursor: not-allowed; }
+.checkout-page {
+  background: var(--shop-surface);
+  border: 1px solid var(--shop-border);
+  border-radius: var(--shop-radius);
+  padding: 30px;
+  box-shadow: var(--shop-shadow-sm);
+}
+
+.checkout-page h2 {
+  margin: 0 0 22px;
+  color: var(--shop-text);
+  font-size: 24px;
+}
+
+.section {
+  margin-bottom: 26px;
+}
+
+.section-title {
+  margin-bottom: 12px;
+  color: var(--shop-text-muted);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.address-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.address-card {
+  border: 1px solid var(--shop-border);
+  border-radius: var(--shop-radius-sm);
+  padding: 14px;
+  cursor: pointer;
+  background: var(--shop-surface);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  transition: border-color var(--shop-transition), background var(--shop-transition), box-shadow var(--shop-transition);
+}
+
+.address-card:hover:not(:disabled) {
+  border-color: rgba(37, 99, 235, .35);
+  box-shadow: 0 6px 18px rgba(31, 41, 55, .06);
+}
+
+.address-card.selected {
+  border-color: var(--shop-primary);
+  background: var(--shop-primary-soft);
+  box-shadow: 0 0 0 1px rgba(37,99,235,.12);
+}
+
+.address-card:disabled {
+  cursor: not-allowed;
+  opacity: .7;
+}
+
+.addr-detail {
+  color: var(--shop-text-muted);
+  font-size: 13px;
+  margin-top: 5px;
+  line-height: 1.5;
+}
+
+.order-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--shop-border);
+}
+
+.order-item-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  color: var(--shop-text);
+}
+
+.order-item-img,
+.order-item-placeholder {
+  width: 54px;
+  height: 54px;
+  flex-shrink: 0;
+  border-radius: var(--shop-radius-sm);
+}
+
+.order-item-img {
+  padding: 5px;
+  object-fit: contain;
+  background: linear-gradient(135deg, #f8fafc, #eef2f6);
+  border: 1px solid var(--shop-border);
+}
+
+.order-item-placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--shop-surface-muted);
+  border: 1px dashed var(--shop-border-strong);
+  color: var(--shop-text-subtle);
+  font-size: 12px;
+}
+
+.order-item > span:last-child {
+  color: var(--shop-price);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.checkout-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--shop-border);
+}
+
+.checkout-footer b {
+  color: var(--shop-price);
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+}
+
+.btn-submit {
+  height: 44px;
+  padding: 0 34px;
+  border: none;
+  border-radius: var(--shop-radius-sm);
+  background: var(--shop-price);
+  color: #fff;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 700;
+  transition: background var(--shop-transition), opacity var(--shop-transition);
+}
+
+.btn-submit:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
+.btn-submit:disabled {
+  background: #cbd5e1;
+  cursor: not-allowed;
+  opacity: .72;
+}
 </style>

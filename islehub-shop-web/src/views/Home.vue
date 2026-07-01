@@ -10,7 +10,7 @@
           <nav class="cat-list">
             <a href="#" :class="{ active: !route.query.categoryId }"
                @click.prevent="selectCat(null)">
-              <span class="cat-icon">🏠</span><span>主页</span>
+              <HomeFilled class="cat-icon" /><span>主页</span>
             </a>
             <PageSkeleton v-if="categoriesLoading" variant="category-nav" :rows="8" />
             <template v-else v-for="cat in categories" :key="cat.id">
@@ -19,23 +19,46 @@
                  href="#"
                  :class="{ active: Number(route.query.categoryId) === cat.id }"
                  @click.prevent="selectCat(cat.id)">
-                <span class="cat-icon">📁</span><span>{{ cat.name }}</span>
+                <Folder class="cat-icon" /><span>{{ cat.name }}</span>
               </a>
               <!-- 有子分类 → 悬停弹出子面板 -->
               <div v-else class="cat-item" :class="{ active: isParentActive(cat) }">
-                <div class="cat-row" @click.self="selectCat(cat.id)">
-                  <span class="cat-icon">📁</span>
+                <a href="#" class="cat-row" @click.prevent="selectCat(cat.id)">
+                  <Folder class="cat-icon" />
                   <span>{{ cat.name }}</span>
                   <span class="arrow">▸</span>
-                </div>
+                </a>
                 <!-- 子分类悬浮面板 -->
                 <div class="cat-sub-panel">
-                  <a v-for="sub in cat.children" :key="sub.id"
-                     href="#"
-                     :class="{ active: Number(route.query.categoryId) === sub.id }"
-                     @click.prevent="selectCat(sub.id)">
-                    {{ sub.name }}
-                  </a>
+                  <div class="cat-panel-header">
+                    <a href="#"
+                       class="cat-panel-root"
+                       :class="{ active: isCategoryActive(cat) }"
+                       @click.prevent="selectCat(cat.id)">
+                      全部 {{ cat.name }}
+                    </a>
+                  </div>
+
+                  <div class="cat-groups">
+                    <section class="cat-group" v-for="sub in secondLevelCats(cat)" :key="sub.id">
+                      <a href="#"
+                         class="cat-group-title"
+                         :class="{ active: isCategoryActive(sub) }"
+                         @click.prevent="selectCat(sub.id)">
+                        {{ sub.name }}
+                      </a>
+                      <div v-if="thirdLevelCats(sub).length" class="cat-leaf-list">
+                        <a v-for="leaf in thirdLevelCats(sub)"
+                           :key="leaf.id"
+                           href="#"
+                           class="cat-leaf"
+                           :class="{ active: isCategoryActive(leaf) }"
+                           @click.prevent="selectCat(leaf.id)">
+                          {{ leaf.name }}
+                        </a>
+                      </div>
+                    </section>
+                  </div>
                 </div>
               </div>
             </template>
@@ -46,33 +69,44 @@
       <!-- 中栏：推荐轮播 -->
       <main class="hero-center">
         <PageSkeleton v-if="recommendLoading" variant="banner" />
-        <div class="recommend-banner" v-else-if="recommendList.length"
-             :style="{ '--bg-color': bannerBgColor }"
-             @mouseenter="pauseBanner" @mouseleave="resumeBanner">
-          <router-link :to="`/product/${currentRecommend.id}`" class="banner-inner">
-            <div class="banner-bg">
-              <img
-                v-if="!currentRecommend.imageFailed"
-                :src="currentRecommend.mainImage || ''"
-                :alt="currentRecommend.name || '推荐商品'"
-                loading="lazy"
-                crossorigin="anonymous"
-                @load="extractColor($event)"
-                @error="handleBannerImageError"
-              />
+        <el-carousel
+          v-else-if="recommendList.length"
+          :key="carouselKey"
+          class="recommend-carousel"
+          height="380px"
+          :interval="4500"
+          arrow="hover"
+          trigger="click"
+          indicator-position="outside"
+          pause-on-hover
+        >
+          <el-carousel-item v-for="(item, index) in recommendList" :key="item.id || index">
+            <div class="spotlight-slide">
+              <div class="spotlight-copy">
+                <p class="spotlight-eyebrow">{{ item.categoryName || '精选好物' }}</p>
+                <h3>{{ shortName(item.name) }}</h3>
+                <p class="spotlight-price">¥{{ productMinPrice(item) }}</p>
+                <button type="button" class="spotlight-action" @click="goProduct(item.id)">查看详情</button>
+              </div>
+              <button
+                type="button"
+                class="spotlight-media"
+                :aria-label="`查看${item.name || '商品'}详情`"
+                @click="goProduct(item.id)"
+              >
+                <img
+                  v-if="!item.imageFailed"
+                  :src="item.bannerImage"
+                  :alt="item.name || '推荐商品'"
+                  :loading="index === 0 ? 'eager' : 'lazy'"
+                  :fetchpriority="index === 0 ? 'high' : 'auto'"
+                  @error="handleBannerImageError(item)"
+                />
+                <span v-else class="spotlight-placeholder">图片暂不可用</span>
+              </button>
             </div>
-            <div class="banner-content">
-              <p class="banner-cat">{{ currentRecommend.categoryName || '精选好物' }}</p>
-              <h3>{{ shortName(currentRecommend.name) }}</h3>
-              <p class="banner-hint">点击查看详情 →</p>
-            </div>
-          </router-link>
-          <div class="banner-dots">
-            <span v-for="(item, i) in recommendList" :key="i"
-                  :class="{ active: i === currentIndex }"
-                  @click.stop="goToSlide(i)" />
-          </div>
-        </div>
+          </el-carousel-item>
+        </el-carousel>
         <!-- 无推荐时的占位 -->
         <div v-else class="recommend-placeholder">
           <p>暂无推荐商品</p>
@@ -86,7 +120,7 @@
           <!-- 未登录态 -->
           <template v-else-if="!user">
             <div class="user-greeting">
-              <p class="greet-text">Hi，欢迎来到 IsleHub 👋</p>
+              <p class="greet-text">Hi，欢迎来到 IsleHub</p>
               <div class="auth-btns">
                 <router-link to="/login" class="btn-login">登录</router-link>
                 <router-link to="/register" class="btn-reg">注册</router-link>
@@ -94,36 +128,45 @@
             </div>
             <div class="panel-divider"></div>
             <ul class="quick-links">
-              <li><router-link to="/orders">📦 我的订单</router-link></li>
-              <li><router-link to="/cart">🛒 购物车</router-link></li>
+              <li><router-link to="/orders"><Document class="link-icon" />我的订单</router-link></li>
+              <li><router-link to="/cart"><ShoppingCart class="link-icon" />购物车</router-link></li>
             </ul>
           </template>
           <!-- 已登录态 -->
           <template v-else>
             <div class="user-avatar-row">
-              <div class="avatar-circle">{{ (user.username).charAt(0) }}</div>
+              <router-link to="/profile" class="avatar-circle" title="查看个人资料">
+                <img
+                  v-if="homeAvatarSrc && !homeAvatarFailed"
+                  :src="homeAvatarSrc"
+                  :alt="user.username || '用户头像'"
+                  @error="homeAvatarFailed = true"
+                />
+                <span v-else>{{ avatarInitial }}</span>
+              </router-link>
               <div class="user-info-text">
                 <b>{{ user.username }}</b>
-                <small>欢迎回来 ✨</small>
+                <small>欢迎回来</small>
               </div>
             </div>
             <div class="panel-divider"></div>
             <!-- 默认收货地址 -->
             <div v-if="defaultAddr" class="addr-card">
-              <p class="addr-label">📍 默认收货地址</p>
+              <p class="addr-label"><Location class="inline-icon" />默认收货地址</p>
               <p class="addr-name">{{ defaultAddr.receiverName }} {{ defaultAddr.receiverPhone }}</p>
               <p class="addr-detail">{{ defaultAddr.province }}{{ defaultAddr.city }}{{ defaultAddr.district }} {{ defaultAddr.detail }}</p>
             </div>
             <div v-else class="addr-empty">
-              <p>📌 暂无收货地址</p>
+              <p><Location class="inline-icon" />暂无收货地址</p>
               <router-link to="/address" class="link-add">去添加 →</router-link>
             </div>
             <div class="panel-divider"></div>
             <ul class="quick-links">
-              <li><router-link to="/orders">📦 我的订单</router-link></li>
-              <li><router-link to="/cart">🛒 购物车</router-link></li>
-              <li><router-link to="/address">📍 地址管理</router-link></li>
-              <li><a href="#" @click.prevent="logout">🚪 退出登录</a></li>
+              <li><router-link to="/orders"><Document class="link-icon" />我的订单</router-link></li>
+              <li><router-link to="/profile"><User class="link-icon" />个人资料</router-link></li>
+              <li><router-link to="/cart"><ShoppingCart class="link-icon" />购物车</router-link></li>
+              <li><router-link to="/address"><Location class="link-icon" />地址管理</router-link></li>
+              <li><a href="#" @click.prevent="logout"><SwitchButton class="link-icon" />退出登录</a></li>
             </ul>
           </template>
         </div>
@@ -152,6 +195,7 @@
 import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus/es/components/message/index.mjs'
+import { Document, Folder, HomeFilled, Location, ShoppingCart, SwitchButton, User } from '@element-plus/icons-vue'
 import { pageProducts, getCategoryTree } from '../api/product'
 import { getAddresses } from '../api/address'
 import { getInfo } from '../api/auth'
@@ -168,56 +212,54 @@ const categoriesLoading = ref(true)
 const recommendLoading = ref(true)
 const productsLoading = ref(true)
 const userPanelLoading = ref(Boolean(localStorage.getItem('shop-token')))
+const homeAvatarFailed = ref(false)
+const homeAvatarVersion = ref(Date.now())
+const avatarInitial = computed(() => (user.value?.username || user.value?.email || 'U').charAt(0).toUpperCase())
+const homeAvatarSrc = computed(() => withAvatarCacheBuster(user.value?.avatar, homeAvatarVersion.value))
 
 // ---- 轮播 ----
 const recommendList = ref([])
-const currentIndex = ref(0)
-let timer = null
-const INTERVAL = 3000
-const bannerBgColor = ref('#e2e8f0')
-const currentRecommend = computed(() => recommendList.value[currentIndex.value] || {})
+const carouselKey = computed(() => recommendList.value.map(item => item.id || item.bannerImage).join('|') || 'empty')
 
-function extractColor(e) {
-  try {
-    const img = e.target, canvas = document.createElement('canvas'), ctx = canvas.getContext('2d')
-    const size = 30; canvas.width = canvas.height = size
-    ctx.drawImage(img, 0, 0, size, size)
-    const d = ctx.getImageData(0, 0, size, size).data
-    let r=0,g=0,b=0,c=0; for(let i=0;i<d.length;i+=4){r+=d[i];g+=d[i+1];b+=d[i+2];c++}
-    r=Math.round(r/c); g=Math.round(g/c); b=Math.round(b/c)
-    const m=Math.max(r,g,b), l=(255-m)*0.5
-    r=Math.round((r+l)*0.82+255*0.18); g=Math.round((g+l)*0.82+255*0.18); b=Math.round((b+l)*0.82+255*0.18)
-    bannerBgColor.value=`rgb(${r},${g},${b})`
-  } catch {
-    bannerBgColor.value = '#e2e8f0'
-  }
+function normalizeImageUrl(url) {
+  const value = String(url || '').trim()
+  if (!value) return ''
+  if (/^(https?:)?\/\//i.test(value) || value.startsWith('data:') || value.startsWith('blob:')) return value
+  if (value.startsWith('/uploads/')) return value
+  if (value.startsWith('uploads/')) return `/${value}`
+  if (value.startsWith('/')) return value
+  return `/${value}`
 }
 
-function handleBannerImageError() {
-  if (currentRecommend.value) currentRecommend.value.imageFailed = true
-  bannerBgColor.value = '#e2e8f0'
+function handleBannerImageError(item) {
+  if (!item) return
+  item.imageFailed = true
 }
 
 function shortName(name){ return name? (name.length>18? name.slice(0,18)+'…':name):'' }
 
-function startTimer(){
-  stopTimer()
-  if (recommendList.value.length <= 1) return
-  timer=setInterval(()=>{ currentIndex.value=(currentIndex.value+1)%recommendList.value.length },INTERVAL)
+function productMinPrice(product) {
+  const skus = product?.skus || []
+  const prices = skus
+    .map(sku => Number(sku.price))
+    .filter(price => Number.isFinite(price) && price >= 0)
+  if (!prices.length) return '--'
+  return Math.min(...prices).toFixed(2)
 }
-function stopTimer(){ clearInterval(timer); timer=null }
-function pauseBanner(){ stopTimer() }
-function resumeBanner(){ if (recommendList.value.length > 1) startTimer() }
-function goToSlide(i){ currentIndex.value=i; stopTimer(); resumeBanner() }
 
-async function fetchRecommends(){
-  recommendLoading.value = true
-  try{
-    const res = await pageProducts({page:1,pageSize:10})
-    recommendList.value=(res.data.records||[]).filter(p=>p.mainImage).slice(0,6)
-    if(recommendList.value.length>1) startTimer()
-  }catch{}
-  finally { recommendLoading.value = false }
+function updateRecommendsFromProducts(list) {
+  recommendList.value = (list || [])
+    .map(product => ({
+      ...product,
+      bannerImage: normalizeImageUrl(product?.mainImage),
+      imageFailed: false
+    }))
+    .filter(product => product.bannerImage)
+    .slice(0, 6)
+}
+
+function goProduct(productId) {
+  if (productId) router.push(`/product/${productId}`)
 }
 
 // ---- 分类选择 ----
@@ -226,12 +268,32 @@ function selectCat(catId){
   else router.push({path:'/',query:{categoryId:catId}})
 }
 
+const selectedCategoryId = computed(() => {
+  const id = Number(route.query.categoryId)
+  return Number.isFinite(id) ? id : null
+})
 
+function secondLevelCats(cat) {
+  return Array.isArray(cat?.children) ? cat.children : []
+}
+
+function thirdLevelCats(cat) {
+  return Array.isArray(cat?.children) ? cat.children : []
+}
+
+function isCategoryActive(cat) {
+  return selectedCategoryId.value === Number(cat?.id)
+}
+
+function containsCategory(cat, id) {
+  if (!id || !cat) return false
+  if (Number(cat.id) === id) return true
+  return (cat.children || []).some(child => containsCategory(child, id))
+}
 
 // 判断父分类是否处于选中状态（其某个子分类被选中）
 function isParentActive(parent){
-  if(Number(route.query.categoryId)===parent.id) return true
-  return parent.children?.some(s=>Number(route.query.categoryId)===s.id)
+  return containsCategory(parent, selectedCategoryId.value)
 }
 
 // ---- 分页 ----
@@ -242,22 +304,29 @@ const pageSize = 20
 function handleLogout(){
   user.value = null
   defaultAddr.value = null
+  homeAvatarFailed.value = false
+}
+
+function handleUserUpdated(event){
+  user.value = event.detail || user.value
+  homeAvatarFailed.value = false
+  homeAvatarVersion.value = event.detail?.avatarUpdatedAt || Date.now()
 }
 
 onMounted(async()=>{
   // 监听退出登录事件（ShopHeader 退出时触发）
   window.addEventListener('app-user-logout', handleLogout)
+  window.addEventListener('app-user-updated', handleUserUpdated)
 
   Promise.all([
     fetchCategories(),
     fetchUserPanel(),
-    fetchRecommends(),
     fetchProducts()
   ])
 })
 onUnmounted(()=>{
-  stopTimer()
   window.removeEventListener('app-user-logout', handleLogout)
+  window.removeEventListener('app-user-updated', handleUserUpdated)
 })
 
 watch(()=>route.query.categoryId,()=>{pageNum.value=1;fetchProducts()})
@@ -265,15 +334,26 @@ watch(()=>route.query.keyword,()=>{pageNum.value=1;fetchProducts()})
 
 async function fetchProducts(){
   productsLoading.value = true
+  recommendLoading.value = true
   try{
     const params={page:pageNum.value,pageSize}
     if(route.query.categoryId) params.categoryId=route.query.categoryId
     if(route.query.keyword) params.keyword=route.query.keyword
     const res=await pageProducts(params)
-    products.value=res.data.records
-    total.value=res.data.total
-  }catch{ ElMessage.error('加载商品失败') }
-  finally { productsLoading.value = false }
+    const records = res.data.records || []
+    products.value = records
+    total.value = res.data.total
+    updateRecommendsFromProducts(records)
+  }catch{
+    products.value = []
+    total.value = 0
+    updateRecommendsFromProducts([])
+    ElMessage.error('加载商品失败')
+  }
+  finally {
+    productsLoading.value = false
+    recommendLoading.value = false
+  }
 }
 
 async function fetchCategories(){
@@ -293,6 +373,8 @@ async function fetchUserPanel(){
   userPanelLoading.value = true
   try{
     user.value=(await getInfo()).data
+    homeAvatarFailed.value = false
+    homeAvatarVersion.value = Date.now()
     await fetchDefaultAddr()
   }catch{}
   finally { userPanelLoading.value = false }
@@ -307,7 +389,17 @@ async function fetchDefaultAddr(){
 }
 
 function logout(){
-  localStorage.removeItem('shop-token'); user.value=null; defaultAddr.value=null; router.push('/')
+  localStorage.removeItem('shop-token'); user.value=null; defaultAddr.value=null; homeAvatarFailed.value=false; router.push('/')
+}
+
+function withAvatarCacheBuster(url, version) {
+  if (!url) return ''
+  const value = String(url)
+  if (value.startsWith('data:') || value.startsWith('blob:')) return value
+  const hashIndex = value.indexOf('#')
+  const base = hashIndex >= 0 ? value.slice(0, hashIndex) : value
+  const hash = hashIndex >= 0 ? value.slice(hashIndex) : ''
+  return `${base}${base.includes('?') ? '&' : '?'}v=${version}${hash}`
 }
 </script>
 
@@ -322,35 +414,35 @@ function logout(){
 }
 
 /* ---- 左栏：分类导航（悬停展开） ---- */
-.hero-left { width: 210px; flex-shrink: 0; }
+.hero-left { width: 210px; height: 100%; flex-shrink: 0; }
 .category-nav {
-  background: #fff; border-radius: 12px; height: 90%;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  background: var(--shop-surface); border: 1px solid var(--shop-border); border-radius: var(--shop-radius); height: 100%;
+  box-shadow: var(--shop-shadow-sm);
   padding: 14px 0;
   overflow: visible;           /* 关键：允许子面板溢出到外部 */
 }
 .hero-left {
-  width: 210px; flex-shrink: 0;
+  width: 210px; height: 100%; flex-shrink: 0;
   overflow: visible;           /* 取消滑动条，允许子面板溢出，修复鼠标移入面板时消失的问题 */
   border-radius: 12px;
 }
-.nav-title { margin: 0 16px 8px; font-size: 15px; color: #333; letter-spacing: 0.5px; }
+.nav-title { margin: 0 18px 10px; font-size: 15px; color: var(--shop-text); letter-spacing: 0.5px; font-weight: 800; }
 
-.cat-list a,
-.cat-item .cat-row {
+.cat-list > a,
+.cat-item > .cat-row {
   display: flex; align-items: center; gap: 8px;
-  padding: 9px 20px; font-size: 13px; color: #555;
+  padding: 9px 18px; font-size: 13px; color: var(--shop-text-muted);
   text-decoration: none; transition: all 0.15s;
-  cursor: pointer; user-select: none; position: relative;
+  cursor: pointer; position: relative;
 }
-.cat-list a:hover,
-.cat-item .cat-row:hover { background: #f0f7ff; color: #409eff; }
-.cat-list a.active { background: #e6f1fc; color: #409eff; font-weight: 600; border-left: 3px solid #409eff; padding-left: 17px; }
-.cat-item.active > .cat-row { color: #409eff; font-weight: 600; }
+.cat-list > a:hover,
+.cat-item > .cat-row:hover { background: var(--shop-primary-soft); color: var(--shop-primary); }
+.cat-list > a.active { background: var(--shop-primary-soft); color: var(--shop-primary); font-weight: 700; border-left: 3px solid var(--shop-primary); padding-left: 15px; }
+.cat-item.active > .cat-row { color: var(--shop-primary); font-weight: 700; }
 
-.cat-icon { font-size: 14px; width: 22px; text-align: center; flex-shrink: 0; }
-.arrow { margin-left: auto; font-size: 10px; color: #bbb; transition: transform 0.2s; }
-.cat-item:hover .arrow { transform: translateX(2px); color: #409eff; }
+.cat-icon { width: 16px; height: 16px; text-align: center; flex-shrink: 0; }
+.arrow { margin-left: auto; font-size: 10px; color: var(--shop-text-subtle); transition: transform 0.2s; }
+.cat-item:hover .arrow { transform: translateX(2px); color: var(--shop-primary); }
 
 /* ====== 悬停子分类面板 ====== */
 .cat-item {
@@ -365,16 +457,15 @@ function logout(){
   width: calc(100% - 224px);
   height: 380px;
 
-  background: #fff;
-  border: 5px solid #ffffff;
-  border-radius: 0 12px 12px 0;
-  box-shadow: 8px 0 28px rgba(0,0,0,0.12);
+  background: var(--shop-surface);
+  border: 1px solid var(--shop-border);
+  border-radius: 0 var(--shop-radius) var(--shop-radius) 0;
+  box-shadow: var(--shop-shadow);
   padding: 20px 24px;
 
   display: flex;
-  flex-wrap: wrap;
-  align-content: flex-start;
-  gap: 6px 16px;
+  flex-direction: column;
+  gap: 16px;
 
   z-index: 9999;
 
@@ -386,126 +477,301 @@ function logout(){
 
 /* 鼠标在分类项上，或在面板内，都保持显示 */
 .cat-item:hover .cat-sub-panel,
+.cat-item:focus-within .cat-sub-panel,
 .cat-sub-panel:hover {
   opacity: 1;
   visibility: visible;
 }
 
-.cat-sub-panel a {
+.cat-panel-header {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--shop-border);
+}
+.cat-panel-root {
   display: inline-block;
-  padding: 7px 18px;
+  padding: 7px 16px;
   font-size: 13px;
-  color: #444;
+  color: var(--shop-primary);
   text-decoration: none;
   border-radius: 20px;
+  background: var(--shop-primary-soft);
+  font-weight: 600;
   transition: all 0.15s;
+}
+.cat-panel-root:hover,
+.cat-panel-root.active {
+  background: var(--shop-primary);
+  color: #fff;
+}
+.cat-groups {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 28px;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+.cat-group {
+  min-width: 0;
+}
+.cat-group-title {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  margin-bottom: 8px;
+  color: var(--shop-text);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+  text-decoration: none;
+}
+.cat-group-title::after {
+  content: '›';
+  margin-left: 6px;
+  color: var(--shop-text-subtle);
+  font-size: 15px;
+}
+.cat-group-title:hover,
+.cat-group-title.active {
+  color: var(--shop-primary);
+}
+.cat-leaf-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+}
+.cat-leaf {
+  display: inline-block;
+  max-width: 100%;
+  padding: 5px 12px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--shop-text-muted);
+  text-decoration: none;
+  border-radius: 16px;
   white-space: nowrap;
-  background: transparent;
+  background: var(--shop-surface-muted);
+  transition: all 0.15s;
 }
-.cat-sub-panel a:hover {
-  background: #eaf3ff;
-  color: #409eff;
+.cat-leaf:hover {
+  background: var(--shop-primary-soft);
+  color: var(--shop-primary);
 }
-.cat-sub-panel a.active {
-  background: #409eff;
+.cat-leaf.active {
+  background: var(--shop-primary);
   color: #fff;
   font-weight: 500;
 }
 /* ---- 中栏：推荐轮播 ---- */
-.hero-center { flex: 1; min-width: 0; }
-.recommend-banner {
-  position: relative; width: 100%; height: 100%; border-radius: 12px;
-  overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-  transition: background-color 0.6s ease;
+.hero-center { flex: 1; min-width: 0; height: 100%; }
+.recommend-carousel {
+  height: 100%;
+  border-radius: var(--shop-radius);
+  overflow: hidden;
+  background: var(--shop-surface);
+  border: 1px solid var(--shop-border);
+  box-shadow: var(--shop-shadow-sm);
+}
+.recommend-carousel :deep(.el-carousel__container) {
+  height: 340px !important;
+}
+.recommend-carousel :deep(.el-carousel__item) {
+  height: 340px;
+  overflow: hidden;
+}
+.recommend-carousel :deep(.el-carousel__indicators--outside) {
+  height: 40px;
+  line-height: 40px;
+}
+.recommend-carousel :deep(.el-carousel__button) {
+  width: 22px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--shop-text-muted);
+}
+.recommend-carousel :deep(.el-carousel__arrow) {
+  background: rgba(42,63,73,.58);
+}
+.recommend-carousel :deep(.el-carousel__arrow:hover) {
+  background: rgba(42,63,73,.76);
 }
 .recommend-placeholder {
-  height: 100%; border-radius: 12px; background: linear-gradient(135deg,#f0f4f8,#e8ecf1);
+  height: 100%; border-radius: var(--shop-radius); background: linear-gradient(135deg,var(--shop-surface-muted),#eef2f7);
   display: flex; align-items: center; justify-content: center;
-  color: #aaa; font-size: 15px; box-shadow: inset 0 2px 8px rgba(0,0,0,0.04);
+  color: var(--shop-text-subtle); font-size: 15px; border: 1px dashed var(--shop-border-strong);
 }
-.banner-inner {
-  display: flex; align-items: center; width: 100%; height: 100%;
-  text-decoration: none; color: inherit; position: relative;
+.spotlight-slide {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, .9fr) minmax(360px, 1.1fr);
+  align-items: center;
+  gap: 34px;
+  padding: 40px 46px;
+  color: inherit;
+  background:
+    radial-gradient(circle at 76% 50%, rgba(64,158,255,.13), transparent 34%),
+    linear-gradient(100deg, var(--shop-surface-muted) 0%, var(--shop-surface) 44%, #eef4f8 100%);
 }
-.banner-bg { position: absolute; inset: 0; z-index: 0; background: var(--bg-color, #e2e8f0); }
-.banner-bg::after {
-  content:''; position:absolute; inset:0;
-  background: linear-gradient(
-      105deg, var(--bg-color,#e2e8f0) 0%,
-      color-mix(in srgb,var(--bg-color,#e2e8f0) 70%,white) 45%,
-      color-mix(in srgb,var(--bg-color,#e2e8f0) 35%,white) 65%, transparent 100%
-  );
+.spotlight-copy {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
-.banner-bg img {
-  width: 38%; height: 72%; object-fit: cover; border-radius: 16px;
-  position: absolute; right: 32px; top: 50%; transform: translateY(-50%);
-  box-shadow: 0 6px 24px rgba(0,0,0,0.14);
+.spotlight-eyebrow {
+  margin: 0 0 14px;
+  color: var(--shop-text-muted);
+  font-size: 14px;
+  letter-spacing: 1px;
 }
-.banner-content { position:relative; z-index:1; padding-left:44px; display:flex; flex-direction:column; gap:10px; }
-.banner-cat { font-size:13px; color:#5a7d87; margin:0; letter-spacing:1px; opacity:.85; }
-.banner-content h3 { font-size:26px; color:#2a3f49; margin:0; max-width:360px; line-height:1.4; font-weight:700; }
-.banner-hint { font-size:14px; color:#5a7d87; margin:0; opacity:.8; letter-spacing:.5px; }
-.banner-dots {
-  position:absolute; bottom:16px; left:50%; transform:translateX(-50%);
-  display:flex; gap:9px; z-index:2;
+.spotlight-copy h3 {
+  margin: 0;
+  max-width: 420px;
+  color: var(--shop-text);
+  font-size: 30px;
+  line-height: 1.35;
+  font-weight: 800;
 }
-.banner-dots span {
-  width:9px; height:9px; border-radius:50%;
-  background:rgba(80,80,80,.2); cursor:pointer; transition:all .3s;
+.spotlight-price {
+  margin: 16px 0 20px;
+  color: var(--shop-price);
+  font-size: 24px;
+  line-height: 1;
+  font-weight: 800;
 }
-.banner-dots span.active { background:rgba(42,63,73,.7); transform:scale(1.35); box-shadow:0 0 8px rgba(42,63,73,.12); }
+.spotlight-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 4px;
+  background: var(--shop-primary);
+  color: #fff;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  transition: background var(--shop-transition), box-shadow var(--shop-transition);
+}
+.spotlight-action:hover {
+  background: var(--shop-primary-hover);
+}
+.spotlight-media {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 260px;
+  display:flex; align-items:center; justify-content:center;
+  padding: 14px;
+  border: 1px solid rgba(211,218,226,.82);
+  cursor: pointer;
+  background: linear-gradient(135deg, var(--shop-surface), var(--shop-surface-muted));
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 10px 28px rgba(42,63,73,.13);
+  transition: border-color var(--shop-transition), box-shadow var(--shop-transition), transform var(--shop-transition);
+}
+.spotlight-media:hover {
+  border-color: rgba(37,99,235,.3);
+  box-shadow: 0 14px 34px rgba(42,63,73,.16);
+}
+.spotlight-media img {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 1;
+  pointer-events: none;
+}
+.spotlight-placeholder {
+  width: 100%;
+  height: 100%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border: 1px dashed var(--shop-border-strong);
+  border-radius: 10px;
+  color:var(--shop-text-subtle);
+  font-size:14px;
+  background: rgba(255,255,255,.68);
+}
 
 /* ---- 右栏：用户面板 ---- */
-.hero-right { width: 250px; flex-shrink: 0; }
+.hero-right { width: 250px; height: 100%; flex-shrink: 0; }
 .user-panel {
-  background: #fff; border-radius: 12px; height: 90%;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.06); padding: 18px 16px;
+  background: var(--shop-surface); border: 1px solid var(--shop-border); border-radius: var(--shop-radius); height: 100%;
+  box-shadow: var(--shop-shadow-sm); padding: 18px 16px;
   display:flex; flex-direction:column; gap:4px; overflow-y:auto;
 }
 .user-greeting { text-align:center; padding-top:10px; }
-.greet-text { font-size:15px; color:#555; margin:0 0 14px; }
+.greet-text { font-size:15px; color:var(--shop-text-muted); margin:0 0 14px; }
 .auth-btns { display:flex; gap:10px; justify-content:center; }
 .btn-login {
-  padding:7px 22px; background:#409eff; color:#fff; border-radius:20px;
+  padding:7px 22px; background:var(--shop-primary); color:#fff; border-radius:20px;
   text-decoration:none; font-size:13px; font-weight:500; transition:all .2s;
 }
-.btn-login:hover { background:#337ecc; }
+.btn-login:hover { background:var(--shop-primary-hover); color:#fff; }
 .btn-reg {
-  padding:7px 22px; background:#fff; color:#409eff; border:1px solid #409eff; border-radius:20px;
+  padding:7px 22px; background:#fff; color:var(--shop-primary); border:1px solid var(--shop-primary); border-radius:20px;
   text-decoration:none; font-size:13px; font-weight:500; transition:all .2s;
 }
-.btn-reg:hover { background:#f0f7ff; }
+.btn-reg:hover { background:var(--shop-primary-soft); }
 
 .user-avatar-row { display:flex; align-items:center; gap:12px; }
 .avatar-circle {
-  width:42px; height:42px; border-radius:50%; background:linear-gradient(135deg,#409eff,#67c23a);
+  width:42px; height:42px; border-radius:50%; background:linear-gradient(135deg,var(--shop-primary),var(--shop-success));
   color:#fff; display:flex; align-items:center; justify-content:center;
   font-size:18px; font-weight:bold; flex-shrink:0;
+  overflow:hidden; text-decoration:none; cursor:pointer; transition:transform .15s, box-shadow .15s;
 }
-.user-info-text b { display:block; font-size:15px; color:#333; }
-.user-info-text small { color:#999; font-size:11px; }
+.avatar-circle:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(37,99,235,.22);
+}
+.avatar-circle img {
+  width:100%; height:100%; object-fit:cover;
+}
+.avatar-circle span {
+  display:flex; align-items:center; justify-content:center; width:100%; height:100%;
+}
+.user-info-text b { display:block; font-size:15px; color:var(--shop-text); }
+.user-info-text small { color:var(--shop-text-subtle); font-size:11px; }
 
-.panel-divider { height:1px; background:#f0f0f0; margin:10px 0; }
+.panel-divider { height:1px; background:var(--shop-border); margin:10px 0; }
 
 .addr-card { padding: 8px 4px; }
-.addr-label { font-size:12px; color:#999; margin:0 0 6px; }
-.addr-name { font-size:13px; color:#333; margin:0 0 4px; font-weight:600; }
-.addr-detail { font-size:12px; color:#888; margin:0; line-height:1.45; word-break:break-all; }
+.addr-label { display:flex; align-items:center; gap:5px; font-size:12px; color:var(--shop-text-subtle); margin:0 0 6px; }
+.addr-name { font-size:13px; color:var(--shop-text); margin:0 0 4px; font-weight:700; }
+.addr-detail { font-size:12px; color:var(--shop-text-muted); margin:0; line-height:1.45; word-break:break-all; }
 .addr-empty { text-align:center; padding:12px 0; }
-.addr-empty p { font-size:13px; color:#aaa; margin:0 0 8px; }
-.link-add { font-size:13px; color:#409eff; text-decoration:none; font-weight:500; }
+.addr-empty p { display:flex; align-items:center; justify-content:center; gap:5px; font-size:13px; color:var(--shop-text-subtle); margin:0 0 8px; }
+.link-add { font-size:13px; color:var(--shop-primary); text-decoration:none; font-weight:600; }
 
 .quick-links { list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:2px; }
 .quick-links li a {
-  display:block; padding:7px 8px; font-size:13px; color:#555; text-decoration:none;
-  border-radius:6px; transition:all .15s;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:7px 8px;
+  color:var(--shop-text-muted);
+  font-size:13px;
+  text-decoration:none;
+  border-radius:var(--shop-radius-sm);
+  transition:background var(--shop-transition), color var(--shop-transition);
 }
-.quick-links li a:hover { background:#f5f7fa; color:#409eff; }
+.quick-links li a:hover { background:var(--shop-primary-soft); color:var(--shop-primary); }
+.link-icon,
+.inline-icon { width:14px; height:14px; flex-shrink:0; }
 
 /* ---- 商品网格 ---- */
 .product-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-.empty-state { text-align:center; padding:60px 0; color:#999; }
+.empty-state { text-align:center; padding:60px 0; color:var(--shop-text-muted); background:var(--shop-surface); border:1px dashed var(--shop-border-strong); border-radius:var(--shop-radius); }
 .empty-state p { font-size:16px; margin-bottom:12px; }
-.empty-state a { color:#409eff; text-decoration:none; }
+.empty-state a { color:var(--shop-primary); text-decoration:none; font-weight:600; }
 .pagination { display:flex; justify-content:center; margin-top:30px; }
 </style>

@@ -18,11 +18,12 @@
 
 <script setup>
 import { reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus/es/components/message/index.mjs'
 import { login } from '../api/auth'
 
 const router = useRouter()
+const route = useRoute()
 const form = reactive({ username: '', password: '' })
 const formRef = ref(null)
 const submitting = ref(false)
@@ -48,16 +49,57 @@ async function handleLogin() {
     })
     localStorage.setItem('shop-token', res.data)
     ElMessage.success('登录成功')
-    router.push('/')
-  } catch { /* 错误消息已由请求拦截器统一处理 */ }
+    const redirect = String(route.query.redirect || '/')
+    router.push(redirect.startsWith('/') ? redirect : '/')
+  } catch (error) {
+    ElMessage.error(error.message || '登录失败')
+  }
   finally { submitting.value = false }
 }
 </script>
 
 <style scoped>
-.auth-page { display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #f5f7fa; }
-.auth-card { width: 380px; padding: 40px; background: #fff; border-radius: 8px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
-.auth-card h2 { text-align: center; margin-bottom: 24px; color: #333; }
-.switch-text { text-align: center; color: #999; font-size: 14px; }
-.switch-text a { color: #409eff; }
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 32px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(37,99,235,.10), transparent 30%),
+    var(--shop-bg);
+}
+
+.auth-card {
+  width: 380px;
+  padding: 40px;
+  background: var(--shop-surface);
+  border: 1px solid var(--shop-border);
+  border-radius: var(--shop-radius);
+  box-shadow: var(--shop-shadow);
+}
+
+.auth-card h2 {
+  margin: 0 0 26px;
+  text-align: center;
+  color: var(--shop-text);
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.auth-card :deep(.el-form-item) {
+  margin-bottom: 18px;
+}
+
+.switch-text {
+  margin: 12px 0 0;
+  text-align: center;
+  color: var(--shop-text-subtle);
+  font-size: 14px;
+}
+
+.switch-text a {
+  color: var(--shop-primary);
+  font-weight: 700;
+}
 </style>

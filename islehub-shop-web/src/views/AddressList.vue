@@ -4,14 +4,13 @@
       <h2>收货地址</h2>
       <el-button type="primary" @click="openDialog(null)">新增地址</el-button>
     </div>
-    <p class="tip">提示：双击地址卡片可快速设为默认收货地址</p>
+    <p class="tip">提示：可将常用地址设为默认收货地址</p>
     <PageSkeleton v-if="loading" variant="address-list" :rows="3" class="inline-skeleton" />
     <div v-else-if="addresses.length === 0" class="empty">暂无收货地址</div>
     <div class="address-list" v-else>
       <div class="address-card" v-for="addr in addresses" :key="addr.id"
            :class="{ 'is-selected': selectedId === addr.id, 'is-default': addr.isDefault === 1 }"
-           @click="selectedId = addr.id"
-           @dblclick="handleSetDefault(addr)">
+           @click="selectedId = addr.id">
         <span v-if="selectedId === addr.id" class="check-mark"></span>
 
         <div class="addr-header">
@@ -20,6 +19,7 @@
         </div>
         <div class="addr-detail">{{ addr.province }}{{ addr.city }}{{ addr.district }} {{ addr.detail }}</div>
         <div class="addr-actions">
+          <el-button v-if="addr.isDefault !== 1" text type="primary" @click.stop="handleSetDefault(addr)">设为默认</el-button>
           <el-button text type="primary" @click.stop="openDialog(addr)">编辑</el-button>
           <el-button text type="danger" :loading="deletingId === addr.id" @click.stop="handleDelete(addr)">删除</el-button>
         </div>
@@ -245,30 +245,56 @@ async function handleSetDefault(addr) {
 </script>
 
 <style scoped>
-.tip { color: #999; font-size: 12px; margin: 8px 0; }
-.address-page { background: #fff; padding: 30px; border-radius: 8px; }
+.address-page {
+  background: var(--shop-surface);
+  border: 1px solid var(--shop-border);
+  border-radius: var(--shop-radius);
+  padding: 30px;
+  box-shadow: var(--shop-shadow-sm);
+}
+
+.tip {
+  color: var(--shop-text-subtle);
+  font-size: 12px;
+  margin: -10px 0 18px;
+}
+
 .inline-skeleton { padding: 0; }
-.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.page-header h2 {
+  margin: 0;
+  color: var(--shop-text);
+  font-size: 24px;
+}
+
 .address-card {
   position: relative;
-  border: 2px solid #eee;
-  border-radius: 8px;
+  border: 1px solid var(--shop-border);
+  border-radius: var(--shop-radius-sm);
   padding: 16px;
   margin-bottom: 12px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  background: var(--shop-surface);
+  transition: border-color var(--shop-transition), background var(--shop-transition), box-shadow var(--shop-transition);
 }
 .address-card:hover {
-  border-color: #c6e2ff;
-  background: #fafcff;
+  border-color: rgba(37, 99, 235, .35);
+  background: #fbfdff;
 }
 .address-card.is-selected {
-  border-color: #409eff;
-  background: #ecf5ff;
-  box-shadow: 0 2px 12px rgba(64, 158, 255, 0.15);
+  border-color: var(--shop-primary);
+  background: var(--shop-primary-soft);
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, .12);
 }
 .address-card.is-default:not(.is-selected) {
-  border-color: #fdd;
+  border-color: rgba(220, 38, 38, .28);
 }
 .check-mark {
   position: absolute;
@@ -276,7 +302,7 @@ async function handleSetDefault(addr) {
   right: 0;
   width: 0;
   height: 0;
-  border-top: 28px solid #409eff;
+  border-top: 28px solid var(--shop-primary);
   border-left: 28px solid transparent;
 }
 .check-mark::after {
@@ -290,8 +316,25 @@ async function handleSetDefault(addr) {
   border-width: 0 2px 2px 0;
   transform: rotate(45deg);
 }
-.addr-header { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
-.addr-detail { color: #666; font-size: 14px; }
+.addr-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  color: var(--shop-text);
+}
+.addr-detail {
+  color: var(--shop-text-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
 .addr-actions { margin-top: 8px; display: flex; gap: 8px; }
-.empty { text-align: center; color: #999; padding: 60px 0; }
+.empty {
+  text-align: center;
+  color: var(--shop-text-muted);
+  padding: 64px 0;
+  border: 1px dashed var(--shop-border-strong);
+  border-radius: var(--shop-radius);
+  background: var(--shop-surface-muted);
+}
 </style>
