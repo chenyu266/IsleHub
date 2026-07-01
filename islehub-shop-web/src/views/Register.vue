@@ -31,7 +31,7 @@
 <script setup>
 import { reactive, ref, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus/es/components/message/index.mjs'
+import { ElMessage } from 'element-plus'
 import { register, sendEmailCode } from '../api/auth'
 
 const router = useRouter()

@@ -37,8 +37,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus/es/components/message/index.mjs'
-import { ElMessageBox } from 'element-plus/es/components/message-box/index.mjs'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { getOrder, cancelOrder } from '../api/order'
 import PageSkeleton from '../components/PageSkeleton.vue'
 

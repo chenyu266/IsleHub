@@ -59,8 +59,7 @@
 <script setup>
 import { computed, ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus/es/components/message/index.mjs'
-import { ElMessageBox } from 'element-plus/es/components/message-box/index.mjs'
+import { ElMessage,ElMessageBox } from 'element-plus'
 import { getProduct } from '../api/product'
 import { addToCart as addToCartApi } from '../api/cart'
 import PageSkeleton from '../components/PageSkeleton.vue'

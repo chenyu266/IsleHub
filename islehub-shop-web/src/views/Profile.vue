@@ -82,7 +82,7 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
-import { ElMessage } from 'element-plus/es/components/message/index.mjs'
+import { ElMessage } from 'element-plus'
 import {
   getInfo,
   updateUsername,
@@ -465,12 +465,7 @@ function withAvatarCacheBuster(url, version) {
   gap: 12px;
   align-items: flex-start;
 }
-.username-form :deep(.el-form-item) {
-  margin-bottom: 0;
-}
-.username-form .el-button {
-  width: 112px;
-}
+
 .avatar-cropper {
   display: flex;
   flex-direction: column;

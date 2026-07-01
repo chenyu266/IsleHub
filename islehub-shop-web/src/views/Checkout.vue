@@ -57,7 +57,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus/es/components/message/index.mjs'
+import { ElMessage } from 'element-plus'
 import { getCart } from '../api/cart'
 import { getAddresses } from '../api/address'
 import { checkout } from '../api/order'

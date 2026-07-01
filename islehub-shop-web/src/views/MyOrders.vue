@@ -31,7 +31,7 @@
 
 <script setup>
 import { ref, watch, onMounted } from 'vue'
-import { ElMessage } from 'element-plus/es/components/message/index.mjs'
+import { ElMessage } from 'element-plus'
 import { pageOrders } from '../api/order'
 import PageSkeleton from '../components/PageSkeleton.vue'
 

@@ -70,7 +70,7 @@
 
 <script setup>
 import { onMounted, onUnmounted, reactive, ref } from 'vue'
-import { ElMessage } from 'element-plus/es/components/message/index.mjs'
+import { ElMessage } from 'element-plus'
 import {
   changeEmail,
   getInfo,

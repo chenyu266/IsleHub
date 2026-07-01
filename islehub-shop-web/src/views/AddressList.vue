@@ -57,8 +57,8 @@
 
 <script setup>
 import { ref, reactive, onMounted, nextTick } from 'vue'
-import { ElMessage } from 'element-plus/es/components/message/index.mjs'
-import { ElMessageBox } from 'element-plus/es/components/message-box/index.mjs'
+import { ElMessage,ElMessageBox  } from 'element-plus'
+
 import { getAddresses, addAddress, updateAddress, deleteAddress } from '../api/address'
 import PageSkeleton from '../components/PageSkeleton.vue'
 
