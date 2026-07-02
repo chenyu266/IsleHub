@@ -86,10 +86,10 @@ public class UserController {
         return Result.ok(url);
     }
 
-    @Operation(summary = "发起换绑邮箱 — 向当前邮箱发送验证码")
+    @Operation(summary = "发起换绑 — 向当前邮箱发送验证码")
     @PostMapping("/email/change")
-    public Result<Void> sendChangeEmailCode(@Valid @RequestBody ChangeEmailDTO dto) {
-        userService.sendChangeEmailCode(StpUtil.getLoginIdAsLong(), dto.getNewEmail());
+    public Result<Void> sendChangeEmailCode() {
+        userService.sendChangeEmailCode(StpUtil.getLoginIdAsLong());
         return Result.ok();
     }
 
@@ -100,10 +100,10 @@ public class UserController {
         return Result.ok();
     }
 
-    @Operation(summary = "向新邮箱发送验证码 — 需先通过旧邮箱验证")
-    @PostMapping("/email/send-new")
-    public Result<Void> sendNewCode() {
-        userService.sendNewEmailCode(StpUtil.getLoginIdAsLong());
+    @Operation(summary = "提交新邮箱 — 需先通过旧邮箱验证，向新邮箱发送验证码")
+    @PostMapping("/email/new")
+    public Result<Void> setNewEmail(@Valid @RequestBody ChangeEmailDTO dto) {
+        userService.setNewEmail(StpUtil.getLoginIdAsLong(), dto.getNewEmail());
         return Result.ok();
     }
 

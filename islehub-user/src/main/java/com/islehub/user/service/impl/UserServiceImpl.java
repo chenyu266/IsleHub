@@ -162,22 +162,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     @Override
-    public void sendChangeEmailCode(Long userId, String newEmail) {
+    public void sendChangeEmailCode(Long userId) {
         User user = getById(userId);
         if (user == null) {
             throw new BizException("用户不存在");
         }
-        if (newEmail.equals(user.getEmail())) {
-            throw new BizException("新邮箱不能与当前邮箱相同");
-        }
-        if (lambdaQuery().eq(User::getEmail, newEmail)
-                .ne(User::getId, userId).one() != null) {
-            throw new BizException("该邮箱已被其他账号使用");
-        }
-        // 暂存新邮箱（供后续步骤校验使用）
-        stringRedisTemplate.opsForValue()
-                .set(RedisKeys.emailChangePending(userId), newEmail, RedisKeys.EMAIL_CODE_TTL);
-        // 向当前邮箱发送验证码
         sendCodeToEmail(user.getEmail(), RedisKeys.emailChangeCode(user.getEmail()));
     }
 
@@ -188,7 +177,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             throw new BizException("用户不存在");
         }
 
-        // 验证旧邮箱验证码
         String oldEmail = user.getEmail();
         String savedCode = stringRedisTemplate.opsForValue()
                 .get(RedisKeys.emailChangeCode(oldEmail));
@@ -200,24 +188,31 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             throw new BizException("验证码错误");
         }
 
-        // 标记旧邮箱已验证，清除验证码（防止复用）
         stringRedisTemplate.opsForValue()
                 .set(RedisKeys.emailChangeOldVerified(userId), "1", RedisKeys.EMAIL_CODE_TTL);
         stringRedisTemplate.delete(RedisKeys.emailChangeCode(oldEmail));
     }
 
     @Override
-    public void sendNewEmailCode(Long userId) {
-        // 必须已通过旧邮箱验证
+    public void setNewEmail(Long userId, String newEmail) {
         if (Boolean.FALSE.equals(stringRedisTemplate.hasKey(
                 RedisKeys.emailChangeOldVerified(userId)))) {
             throw new BizException("请先验证旧邮箱");
         }
-        String newEmail = stringRedisTemplate.opsForValue()
-                .get(RedisKeys.emailChangePending(userId));
-        if (newEmail == null) {
-            throw new BizException("操作已过期，请重新发起换绑");
+        User user = getById(userId);
+        if (user == null) {
+            throw new BizException("用户不存在");
         }
+        if (newEmail.equals(user.getEmail())) {
+            throw new BizException("新邮箱不能与当前邮箱相同");
+        }
+        if (lambdaQuery().eq(User::getEmail, newEmail)
+                .ne(User::getId, userId).one() != null) {
+            throw new BizException("该邮箱已被其他账号使用");
+        }
+
+        stringRedisTemplate.opsForValue()
+                .set(RedisKeys.emailChangePending(userId), newEmail, RedisKeys.EMAIL_CODE_TTL);
         sendCodeToEmail(newEmail, RedisKeys.emailChangeNewCode(newEmail));
     }
 

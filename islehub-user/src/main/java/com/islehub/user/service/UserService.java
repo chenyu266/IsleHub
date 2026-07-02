@@ -19,8 +19,8 @@ public interface UserService extends IService<User> {
     void updateUsername(Long userId, String newUsername);
     void updatePassword(Long userId, String oldPassword, String newPassword);
     String updateAvatar(Long userId, org.springframework.web.multipart.MultipartFile file);
-    void sendChangeEmailCode(Long userId, String newEmail);
+    void sendChangeEmailCode(Long userId);
     void verifyOldEmailCode(Long userId, String oldCode);
-    void sendNewEmailCode(Long userId);
+    void setNewEmail(Long userId, String newEmail);
     void confirmNewEmail(Long userId, String newCode);
 }
