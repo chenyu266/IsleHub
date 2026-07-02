@@ -17,9 +17,13 @@ export const uploadAvatar = (file) => {
   return userRequest.post('/avatar', formData)
 }
 
-export const sendChangeEmailCode = (newEmail) => userRequest.post('/email/change', { newEmail })
+export const sendChangeEmailCode = () => userRequest.post('/email/change')
 
-export const changeEmail = (data) => userRequest.put('/email', data)
+export const verifyOldEmailCode = (oldCode) => userRequest.post('/email/verify', { oldCode })
+
+export const sendNewChangeEmailCode = (newEmail) => userRequest.post('/email/new', { newEmail })
+
+export const confirmChangeEmail = (newCode) => userRequest.put('/email', { newCode })
 
 // 注册 → 复用 /api/user/register 接口
 export const register = (data) => userRequest.post('/register', data)

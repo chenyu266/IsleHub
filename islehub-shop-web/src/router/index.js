@@ -15,6 +15,7 @@ const routes = [
       { path: 'order/:id', name: 'OrderDetail', component: () => import('../views/OrderDetail.vue') },
       { path: 'profile', name: 'Profile', component: () => import('../views/Profile.vue') },
       { path: 'account-settings', name: 'AccountSettings', component: () => import('../views/AccountSettings.vue') },
+      { path: 'account-settings/change-email', name: 'ChangeEmail', component: () => import('../views/ChangeEmail.vue') },
       { path: 'address', name: 'AddressList', component: () => import('../views/AddressList.vue') },
     ]
   }

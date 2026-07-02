@@ -55,7 +55,7 @@
     <el-dialog :title="dialogTitle" v-model="dialogVisible" width="500px" @close="resetForm">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="80px">
         <el-form-item label="用户名" prop="username">
-          <el-input v-model="form.username" :disabled="isEdit" />
+          <el-input v-model="form.username" maxlength="15" show-word-limit :disabled="isEdit" />
         </el-form-item>
         <el-form-item label="密码" :prop="isEdit ? '' : 'password'">
           <el-input v-model="form.password" type="password" show-password :placeholder="isEdit ? '留空则不修改' : '请输入密码'" />
@@ -98,7 +98,10 @@ const isEdit = ref(false)
 const dialogTitle = computed(() => isEdit.value ? '编辑用户' : '新增用户')
 const form = ref({ username: '', password: '', email: '', phone: '', role: 'operator' })
 const rules = {
-  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+  username: [
+    { required: true, message: '请输入用户名', trigger: 'blur' },
+    { validator: validateUsername, trigger: ['blur', 'change'] }
+  ],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
   email: [
     { required: true, message: '请输入邮箱', trigger: 'blur' },
@@ -139,6 +142,19 @@ async function handleSubmit() {
     dialogVisible.value = false
     fetchData()
   } catch { ElMessage.error('保存失败') }
+}
+
+function validateUsername(_rule, value, callback) {
+  const username = String(value ?? '')
+  if (!username.trim()) {
+    callback(new Error('请输入用户名'))
+    return
+  }
+  if (username.length > 15) {
+    callback(new Error('用户名长度不能超过 15 位'))
+    return
+  }
+  callback()
 }
 
 async function toggleStatus(row) {

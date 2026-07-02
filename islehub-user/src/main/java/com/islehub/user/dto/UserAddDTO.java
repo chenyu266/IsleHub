@@ -10,8 +10,7 @@ import lombok.Data;
 public class UserAddDTO {
 
     @NotBlank(message = "用户名不能为空")
-    @Size(min = 3, max = 32, message = "用户名长度3-32位")
-    @Pattern(regexp = "^[a-zA-Z0-9_]+$", message = "用户名只能包含字母、数字和下划线")
+    @Size(min = 1, max = 15, message = "用户名长度不能超过15位")
     private String username;
 
     @NotBlank(message = "密码不能为空")

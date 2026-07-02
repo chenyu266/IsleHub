@@ -8,7 +8,7 @@ import lombok.Data;
 @Data
 public class UpdateUsernameDTO {
     @NotBlank(message = "用户名不能为空")
-    @Size(min = 1, max = 32, message = "用户名长度3-32位")
-    @Pattern(regexp = "^[a-zA-Z0-9_]+$", message = "用户名只能包含字母、数字和下划线")
+    @Pattern(regexp = "^\\S+$", message = "用户名不能包含空白字符")
+    @Size(min = 1, max = 30, message = "用户名长度不能超过30位")
     private String username;
 }

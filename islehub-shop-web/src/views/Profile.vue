@@ -25,13 +25,15 @@
           <el-form-item prop="username">
             <el-input
               v-model="usernameForm.username"
-              maxlength="32"
+              maxlength="30"
               show-word-limit
-              placeholder="请输入 3-32 位用户名"
+              placeholder="请输入用户名，最多 30 位"
               @keyup.enter="saveUsername"
             />
           </el-form-item>
-          <el-button type="primary" :loading="usernameSaving" @click="saveUsername">保存用户名</el-button>
+          <el-button class="username-save-button" type="primary" :loading="usernameSaving" @click="saveUsername">
+            保存用户名
+          </el-button>
         </el-form>
       </div>
     </section>
@@ -141,7 +143,7 @@ const cropImageStyle = computed(() => ({
 const usernameRules = {
   username: [
     { required: true, message: '请输入用户名', trigger: 'blur' },
-    { min: 3, max: 32, message: '用户名长度需为 3-32 位', trigger: ['blur', 'change'] }
+    { validator: validateUsername, trigger: ['blur', 'change'] }
   ]
 }
 
@@ -179,14 +181,33 @@ async function saveUsername() {
   if (!valid) return
   usernameSaving.value = true
   try {
-    await updateUsername(usernameForm.username.trim())
+    const nextUsername = usernameForm.username
+    await updateUsername(nextUsername)
+    usernameForm.username = nextUsername
     await refreshUser()
     ElMessage.success('用户名已更新')
-  } catch {
-    ElMessage.error('用户名更新失败')
+  } catch (error) {
+    ElMessage.error(error.message || '用户名更新失败')
   } finally {
     usernameSaving.value = false
   }
+}
+
+function validateUsername(_rule, value, callback) {
+  const username = String(value ?? '')
+  if (!username.trim()) {
+    callback(new Error('请输入用户名'))
+    return
+  }
+  if (/\s/.test(username)) {
+    callback(new Error('用户名不能包含空白字符'))
+    return
+  }
+  if (username.length > 30) {
+    callback(new Error('用户名长度不能超过 30 位'))
+    return
+  }
+  callback()
 }
 
 async function handleAvatarChange(event) {
@@ -461,9 +482,23 @@ function withAvatarCacheBuster(url, version) {
 }
 .username-form {
   display: grid;
-  grid-template-columns: minmax(260px, 420px) auto;
+  grid-template-columns: minmax(260px, 420px) max-content;
   gap: 12px;
   align-items: flex-start;
+  justify-content: start;
+}
+.username-save-button {
+  width: auto;
+  min-width: 96px;
+  padding: 0 16px;
+}
+@media (max-width: 640px) {
+  .username-form {
+    grid-template-columns: 1fr;
+  }
+  .username-save-button {
+    justify-self: start;
+  }
 }
 
 .avatar-cropper {

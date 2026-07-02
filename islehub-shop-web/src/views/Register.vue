@@ -14,7 +14,9 @@
             </el-button>
           </div>
         </el-form-item>
-        <el-form-item prop="username"><el-input v-model="form.username" placeholder="用户名" autocomplete="username" /></el-form-item>
+        <el-form-item prop="username">
+          <el-input v-model="form.username" maxlength="30" show-word-limit placeholder="用户名" autocomplete="username" />
+        </el-form-item>
         <el-form-item prop="password"><el-input v-model="form.password" type="password" placeholder="密码 (6-20位，含字母+数字)" autocomplete="new-password" show-password /></el-form-item>
         <el-form-item prop="confirmPassword"><el-input v-model="form.confirmPassword" type="password" placeholder="确认密码" autocomplete="new-password" show-password /></el-form-item>
         <el-form-item>
@@ -57,7 +59,8 @@ const rules = {
     { required: true, message: '请输入验证码', trigger: 'blur' }
   ],
   username: [
-    { required: true, message: '请输入用户名', trigger: 'blur' }
+    { required: true, message: '请输入用户名', trigger: 'blur' },
+    { validator: validateUsername, trigger: ['blur', 'change'] }
   ],
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
@@ -110,7 +113,7 @@ async function handleRegister() {
     await register({
       email: form.email.trim(),
       emailConfirmCode: form.emailConfirmCode.trim(),
-      username: form.username.trim(),
+      username: form.username,
       password: form.password
     })
     ElMessage.success('注册成功，请登录')
@@ -119,6 +122,23 @@ async function handleRegister() {
     ElMessage.error(error.message || '注册失败')
   }
   finally { submitting.value = false }
+}
+
+function validateUsername(_rule, value, callback) {
+  const username = String(value ?? '')
+  if (!username.trim()) {
+    callback(new Error('请输入用户名'))
+    return
+  }
+  if (/\s/.test(username)) {
+    callback(new Error('用户名不能包含空白字符'))
+    return
+  }
+  if (username.length > 30) {
+    callback(new Error('用户名长度不能超过 30 位'))
+    return
+  }
+  callback()
 }
 
 function validatePassword(_rule, value, callback) {

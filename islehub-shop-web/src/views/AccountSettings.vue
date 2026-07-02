@@ -45,22 +45,21 @@
           <el-form-item label="当前邮箱">
             <el-input :model-value="user?.email || ''" disabled />
           </el-form-item>
-          <el-form-item label="新邮箱" prop="newEmail">
+          <el-form-item label="验证邮箱" prop="oldCode">
             <div class="code-line">
-              <el-input v-model="emailForm.newEmail" autocomplete="email" placeholder="请输入新邮箱" />
-              <el-button :disabled="emailCodeCountdown > 0 || emailCodeSending" :loading="emailCodeSending" @click="sendEmailCodes">
+              <el-input
+                v-model="emailForm.oldCode"
+                maxlength="6"
+                placeholder="请输入当前邮箱验证码"
+                @keyup.enter="goToChangeEmail"
+              />
+              <el-button :disabled="emailCodeCountdown > 0 || emailCodeSending" :loading="emailCodeSending" @click="sendCurrentEmailCode">
                 {{ emailCodeCountdown > 0 ? `${emailCodeCountdown}s` : '发送验证码' }}
               </el-button>
             </div>
           </el-form-item>
-          <el-form-item label="当前邮箱码" prop="oldCode">
-            <el-input v-model="emailForm.oldCode" maxlength="6" placeholder="当前邮箱收到的验证码" />
-          </el-form-item>
-          <el-form-item label="新邮箱码" prop="newCode">
-            <el-input v-model="emailForm.newCode" maxlength="6" placeholder="新邮箱收到的验证码" @keyup.enter="saveEmail" />
-          </el-form-item>
           <el-form-item>
-            <el-button type="primary" :loading="emailSaving" @click="saveEmail">确认换绑</el-button>
+            <el-button type="primary" :loading="emailVerifying" @click="goToChangeEmail">下一步</el-button>
           </el-form-item>
         </el-form>
       </section>
@@ -70,18 +69,21 @@
 
 <script setup>
 import { onMounted, onUnmounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
-  changeEmail,
   getInfo,
   sendChangeEmailCode,
-  sendEmailCode,
-  updatePassword
+  updatePassword,
+  verifyOldEmailCode
 } from '../api/auth'
 
+const EMAIL_CHANGE_VERIFIED_KEY = 'islehub-email-change-old-verified'
+
+const router = useRouter()
 const user = ref(null)
 const passwordSaving = ref(false)
-const emailSaving = ref(false)
+const emailVerifying = ref(false)
 const emailCodeSending = ref(false)
 const emailCodeCountdown = ref(0)
 let emailCodeTimer = null
@@ -95,9 +97,7 @@ const passwordForm = reactive({
   confirmPassword: ''
 })
 const emailForm = reactive({
-  newEmail: '',
-  oldCode: '',
-  newCode: ''
+  oldCode: ''
 })
 
 const passwordRules = {
@@ -115,22 +115,16 @@ const passwordRules = {
 }
 
 const emailRules = {
-  newEmail: [
-    { required: true, message: '请输入新邮箱', trigger: 'blur' },
-    { type: 'email', message: '请输入正确的邮箱', trigger: ['blur', 'change'] },
-    { validator: validateNewEmail, trigger: ['blur', 'change'] }
-  ],
   oldCode: [
     { required: true, message: '请输入当前邮箱验证码', trigger: 'blur' },
-    { len: 6, message: '验证码为 6 位', trigger: ['blur', 'change'] }
-  ],
-  newCode: [
-    { required: true, message: '请输入新邮箱验证码', trigger: 'blur' },
     { len: 6, message: '验证码为 6 位', trigger: ['blur', 'change'] }
   ]
 }
 
-onMounted(loadUser)
+onMounted(() => {
+  sessionStorage.removeItem(EMAIL_CHANGE_VERIFIED_KEY)
+  loadUser()
+})
 onUnmounted(() => {
   if (emailCodeTimer) clearInterval(emailCodeTimer)
 })
@@ -138,15 +132,6 @@ onUnmounted(() => {
 async function loadUser() {
   const res = await getInfo()
   user.value = res.data
-}
-
-function emitUserUpdated() {
-  window.dispatchEvent(new CustomEvent('app-user-updated', { detail: user.value }))
-}
-
-async function refreshUser() {
-  await loadUser()
-  emitUserUpdated()
 }
 
 async function savePassword() {
@@ -162,53 +147,42 @@ async function savePassword() {
     Object.assign(passwordForm, { oldPassword: '', newPassword: '', confirmPassword: '' })
     passwordFormRef.value?.clearValidate()
     ElMessage.success('密码已更新')
-  } catch {
-    ElMessage.error('密码更新失败')
+  } catch (error) {
+    ElMessage.error(error.message || '密码更新失败')
   } finally {
     passwordSaving.value = false
   }
 }
 
-async function sendEmailCodes() {
-  let newEmailValid = true
-  try {
-    await emailFormRef.value?.validateField('newEmail')
-  } catch {
-    newEmailValid = false
-  }
-  if (!newEmailValid || emailCodeSending.value || emailCodeCountdown.value > 0) return
+async function sendCurrentEmailCode() {
+  if (emailCodeSending.value || emailCodeCountdown.value > 0) return
   emailCodeSending.value = true
   try {
-    const nextEmail = emailForm.newEmail.trim()
-    await sendChangeEmailCode(nextEmail)
-    await sendEmailCode(nextEmail)
-    ElMessage.success('验证码已发送至当前邮箱和新邮箱')
+    sessionStorage.removeItem(EMAIL_CHANGE_VERIFIED_KEY)
+    await sendChangeEmailCode()
+    ElMessage.success('验证码已发送至当前邮箱')
     startEmailCountdown()
-  } catch {
-    ElMessage.error('验证码发送失败')
+  } catch (error) {
+    ElMessage.error(error.message || '验证码发送失败')
   } finally {
     emailCodeSending.value = false
   }
 }
 
-async function saveEmail() {
-  if (emailSaving.value) return
+async function goToChangeEmail() {
+  if (emailVerifying.value) return
   const valid = await emailFormRef.value?.validate().catch(() => false)
   if (!valid) return
-  emailSaving.value = true
+  emailVerifying.value = true
   try {
-    await changeEmail({
-      oldCode: emailForm.oldCode.trim(),
-      newCode: emailForm.newCode.trim()
-    })
-    Object.assign(emailForm, { newEmail: '', oldCode: '', newCode: '' })
-    emailFormRef.value?.clearValidate()
-    await refreshUser()
-    ElMessage.success('邮箱已换绑')
-  } catch {
-    ElMessage.error('邮箱换绑失败')
+    await verifyOldEmailCode(emailForm.oldCode.trim())
+    sessionStorage.setItem(EMAIL_CHANGE_VERIFIED_KEY, '1')
+    ElMessage.success('当前邮箱验证通过')
+    router.push('/account-settings/change-email')
+  } catch (error) {
+    ElMessage.error(error.message || '当前邮箱验证失败')
   } finally {
-    emailSaving.value = false
+    emailVerifying.value = false
   }
 }
 
@@ -227,14 +201,6 @@ function startEmailCountdown() {
 function validateConfirmPassword(_rule, value, callback) {
   if (value !== passwordForm.newPassword) {
     callback(new Error('两次输入的新密码不一致'))
-    return
-  }
-  callback()
-}
-
-function validateNewEmail(_rule, value, callback) {
-  if (user.value?.email && String(value || '').trim() === user.value.email) {
-    callback(new Error('新邮箱不能与当前邮箱相同'))
     return
   }
   callback()
@@ -297,7 +263,32 @@ function validateNewEmail(_rule, value, callback) {
   gap: 10px;
   width: 100%;
 }
+.code-line .el-input {
+  min-width: 0;
+}
 .code-line .el-button {
   flex-shrink: 0;
+  min-width: 104px;
+}
+@media (max-width: 860px) {
+  .settings-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 560px) {
+  .settings-header,
+  .settings-section {
+    padding: 22px 18px;
+  }
+  .code-line {
+    flex-direction: column;
+  }
+  .code-line .el-button {
+    width: 100%;
+  }
 }
 </style>
