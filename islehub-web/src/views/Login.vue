@@ -36,10 +36,10 @@ const rules = {
 async function handleLogin() {
   loading.value = true
   try {
-    const res = await login(form.value)
-    localStorage.setItem('token', res.data)
+    const res = await login(form.value)  //调用登录接口
+    localStorage.setItem('token', res.data)  //将登录成功返回的token存储到localStorage中
     ElMessage.success('登录成功')
-    router.push('/')
+    router.push('/')  //登录成功后，跳转到首页
   } catch { ElMessage.error('登录失败') }
   finally { loading.value = false }
 }

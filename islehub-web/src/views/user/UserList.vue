@@ -3,7 +3,7 @@
     <el-card>
       <el-form :inline="true">
         <el-form-item>
-          <el-input v-model="keyword" placeholder="搜索用户名/姓名/手机" clearable @keyup.enter="fetchData" />
+          <el-input v-model="keyword" placeholder="搜索用户名/邮箱/手机" clearable @keyup.enter="fetchData" />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="fetchData">查询</el-button>
@@ -14,9 +14,8 @@
 
     <el-card style="margin-top:15px">
       <el-table :data="tableData" border stripe v-loading="loading">
-        <el-table-column prop="id" label="ID" width="60" />
         <el-table-column prop="username" label="用户名" />
-        <el-table-column prop="realName" label="姓名" />
+        <el-table-column prop="email" label="邮箱" />
         <el-table-column prop="phone" label="手机号" />
         <el-table-column prop="role" label="角色">
           <template #default="{ row }">
@@ -61,8 +60,8 @@
         <el-form-item label="密码" :prop="isEdit ? '' : 'password'">
           <el-input v-model="form.password" type="password" show-password :placeholder="isEdit ? '留空则不修改' : '请输入密码'" />
         </el-form-item>
-        <el-form-item label="姓名" prop="realName">
-          <el-input v-model="form.realName" />
+        <el-form-item label="邮箱" prop="email">
+          <el-input v-model="form.email" placeholder="请输入邮箱" />
         </el-form-item>
         <el-form-item label="手机号">
           <el-input v-model="form.phone" />
@@ -71,7 +70,6 @@
           <el-select v-model="form.role">
             <el-option label="管理员" value="admin" />
             <el-option label="运营" value="operator" />
-            <el-option label="客服" value="cs" />
           </el-select>
         </el-form-item>
       </el-form>
@@ -98,11 +96,14 @@ const loading = ref(false)
 const dialogVisible = ref(false)
 const isEdit = ref(false)
 const dialogTitle = computed(() => isEdit.value ? '编辑用户' : '新增用户')
-const form = ref({ username: '', password: '', realName: '', phone: '', role: 'operator' })
+const form = ref({ username: '', password: '', email: '', phone: '', role: 'operator' })
 const rules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
-  realName: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
+  email: [
+    { required: true, message: '请输入邮箱', trigger: 'blur' },
+    { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
+  ],
   role: [{ required: true, message: '请选择角色', trigger: 'change' }]
 }
 
@@ -117,7 +118,7 @@ async function fetchData() {
 
 function openAdd() {
   isEdit.value = false
-  form.value = { username: '', password: '', realName: '', phone: '', role: 'operator' }
+  form.value = { username: '', password: '', email: '', phone: '', role: 'operator' }
   dialogVisible.value = true
 }
 

@@ -10,7 +10,7 @@ const request = axios.create({
 request.interceptors.request.use(config => {
   const token = localStorage.getItem('token')
   if (token) {
-    config.headers['islehub-token'] = token
+    config.headers['islehub-token'] = token  //在请求头中添加token
   }
   return config
 })
@@ -36,7 +36,7 @@ request.interceptors.response.use(
 
     if (status === 401) {
       localStorage.removeItem('token')
-      router.push('/login')
+      router.push('/login')  //登录过期后，跳转到登录页
     }
 
     if (!silent) {
