@@ -18,6 +18,9 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * 订单管理控制器，提供订单的增删改查、状态流转及Excel导出接口
+ */
 @SaCheckRole(value = {"admin", "operator"}, mode = SaMode.OR)
 @Tag(name = "管理-订单", description = "订单CRUD、状态流转、导出")
 @RequiredArgsConstructor

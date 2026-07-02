@@ -5,6 +5,9 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 import java.util.List;
 
+/**
+ * 商品分类实体类，支持多级树形结构。
+ */
 @Data
 @TableName("category")
 public class Category {

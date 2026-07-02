@@ -6,6 +6,9 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * 订单实体类，映射order_table表
+ */
 @Data
 @TableName("order_table")
 public class Order {

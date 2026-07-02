@@ -6,6 +6,9 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import java.math.BigDecimal;
 
+/**
+ * 订单商品项实体类，映射order_item表
+ */
 @Data
 @TableName("order_item")
 public class OrderItem {

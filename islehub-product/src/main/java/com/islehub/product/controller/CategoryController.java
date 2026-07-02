@@ -13,6 +13,9 @@ import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
+/**
+ * 管理端分类控制器，处理分类的增删改查及分类树查询。
+ */
 @SaCheckRole(value = {"admin", "operator"}, mode = SaMode.OR)
 @Tag(name = "管理-分类", description = "商品分类树、CRUD")
 @RequiredArgsConstructor

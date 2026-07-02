@@ -4,6 +4,9 @@ import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
 import java.time.LocalDateTime;
 
+/**
+ * 收货地址实体 —— 映射 address 表，存储用户收货地址信息。
+ */
 @Data
 @TableName("address")
 public class Address {

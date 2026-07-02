@@ -6,6 +6,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+/**
+ * Sa-Token 鉴权拦截器配置 — 拦截 /api/** 请求进行登录校验及用户状态检查。
+ */
 @Configuration
 public class SaTokenConfigure implements WebMvcConfigurer {
 

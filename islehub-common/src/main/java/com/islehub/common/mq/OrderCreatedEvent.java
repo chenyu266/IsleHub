@@ -6,6 +6,9 @@ import lombok.NoArgsConstructor;
 import java.io.Serializable;
 import java.util.List;
 
+/**
+ * 订单创建事件：订单创建后发送到消息队列的事件体，包含订单 ID 及扣减库存所需的商品明细
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

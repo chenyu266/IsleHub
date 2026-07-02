@@ -6,6 +6,10 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 import java.time.LocalDateTime;
 
+/**
+ * 用户实体类，映射数据库user表，包含用户基本信息、登录记录及软删除标记
+ */
+
 @Data
 @TableName("`user`")
 public class User {

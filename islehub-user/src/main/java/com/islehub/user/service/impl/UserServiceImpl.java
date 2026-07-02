@@ -35,6 +35,10 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+/**
+ * 用户服务实现类，处理用户注册登录、密码修改、邮箱换绑、头像上传及管理员操作等核心业务逻辑
+ */
+
 @Slf4j
 @Service
 @RequiredArgsConstructor

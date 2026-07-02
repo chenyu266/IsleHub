@@ -15,6 +15,9 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * C 端订单控制器 —— 提供下单、查单、取消、确认收货等接口。
+ */
 @SaCheckLogin
 @Tag(name = "商城-订单", description = "C端订单：下单、查单、取消、确认收货")
 @RequiredArgsConstructor

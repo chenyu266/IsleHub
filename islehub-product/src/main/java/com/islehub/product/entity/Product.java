@@ -5,6 +5,9 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 import java.time.LocalDateTime;
 
+/**
+ * 商品实体类，包含商品基本信息和关联的 SKU 列表。
+ */
 @Data
 @TableName("product")
 public class Product {

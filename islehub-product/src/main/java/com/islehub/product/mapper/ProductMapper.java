@@ -8,6 +8,9 @@ import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 
+/**
+ * 商品数据访问层，提供商品分页查询和详情查询。
+ */
 @Mapper
 public interface ProductMapper extends BaseMapper<Product> {
 

@@ -25,6 +25,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+/**
+ * 用户管理控制器，提供用户注册、登录、信息修改、邮箱换绑及管理员用户CRUD接口
+ */
+
 @SaCheckLogin
 @Tag(name = "管理-用户", description = "用户CRUD、登录、状态管理")
 @RestController

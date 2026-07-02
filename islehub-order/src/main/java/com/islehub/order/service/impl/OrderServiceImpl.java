@@ -33,6 +33,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+/**
+ * 订单服务实现类，提供订单CRUD、状态流转、缓存管理及Excel导出等功能
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor

@@ -7,6 +7,9 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.io.File;
 
+/**
+ * Spring MVC 配置 — 将本地文件上传目录映射为 /uploads/** 静态资源。
+ */
 @Configuration
 public class WebMvcConfig implements WebMvcConfigurer {
 

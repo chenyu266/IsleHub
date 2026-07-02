@@ -7,6 +7,9 @@ import com.islehub.order.entity.OrderItem;
 import com.islehub.order.entity.OrderShipping;
 import java.util.List;
 
+/**
+ * 订单服务接口，定义管理端和用户端的订单操作方法
+ */
 public interface OrderService extends IService<Order> {
     // ── 管理端 ──
     Page<Order> pageOrders(int page, int pageSize, String orderNo, String status, String startDate, String endDate);

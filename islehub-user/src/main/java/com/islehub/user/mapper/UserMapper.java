@@ -6,6 +6,10 @@ import com.islehub.user.entity.User;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+/**
+ * 用户数据访问层，提供用户分页查询等数据库操作
+ */
+
 @Mapper
 public interface UserMapper extends BaseMapper<User> {
 

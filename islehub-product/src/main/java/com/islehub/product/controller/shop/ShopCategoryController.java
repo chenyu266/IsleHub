@@ -8,6 +8,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * 商城端分类控制器，提供分类树展示接口。
+ */
 @RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/shop/category")

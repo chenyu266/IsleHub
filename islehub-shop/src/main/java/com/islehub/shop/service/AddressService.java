@@ -10,6 +10,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
+/**
+ * 收货地址业务服务 —— 处理收货地址的增删改查逻辑。
+ */
 @Service
 public class AddressService extends ServiceImpl<AddressMapper, Address> {
 

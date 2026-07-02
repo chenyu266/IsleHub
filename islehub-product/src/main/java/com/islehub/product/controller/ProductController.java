@@ -15,6 +15,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * 管理端商品控制器，处理商品的增删改查、上下架及批量操作。
+ */
 @SaCheckRole(value = {"admin", "operator"}, mode = SaMode.OR)
 @Tag(name = "管理-商品", description = "商品CRUD、上下架、批量操作")
 @RequiredArgsConstructor

@@ -6,6 +6,10 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
+/**
+ * 用户注册请求参数，包含用户名、邮箱、邮箱验证码、密码及确认密码
+ */
+
 @Data
 public class UserRegisterDTO {
     @NotBlank(message = "用户名不能为空")

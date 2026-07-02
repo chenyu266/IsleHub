@@ -18,6 +18,9 @@ import java.nio.file.Paths;
 import java.util.Set;
 import java.util.UUID;
 
+/**
+ * 文件上传控制器，处理图片等文件的上传操作。
+ */
 @Tag(name = "管理-上传", description = "图片上传")
 @RestController
 @RequestMapping("/api/upload")

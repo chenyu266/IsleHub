@@ -2,6 +2,9 @@ package com.islehub.common.exception;
 
 import lombok.Getter;
 
+/**
+ * 业务异常类：携带业务错误码的运行时异常，由全局异常处理器统一捕获并转换为标准响应
+ */
 @Getter
 public class BizException extends RuntimeException {
     private final int code;

@@ -3,6 +3,9 @@ package com.islehub.common.enums;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
+/**
+ * 邮件发送错误枚举：将邮件服务器返回的错误关键字映射为中文错误提示，便于前端直接展示
+ */
 @Getter
 @AllArgsConstructor
 public enum EmailErrorEnum {

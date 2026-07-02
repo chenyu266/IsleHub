@@ -14,6 +14,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
+/**
+ * C 端购物车控制器 —— 提供购物车的查看、添加、修改、移除和清空接口。
+ */
 @SaCheckLogin
 @Tag(name = "商城-购物车", description = "购物车增删改查")
 @RequiredArgsConstructor

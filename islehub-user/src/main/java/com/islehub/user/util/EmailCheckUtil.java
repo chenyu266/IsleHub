@@ -11,6 +11,10 @@ import jakarta.mail.internet.MimeMessage;
 
 import java.security.SecureRandom;
 
+/**
+ * 邮箱验证码工具类，提供验证码生成、邮件发送及发送错误信息匹配功能
+ */
+
 @Component
 @RequiredArgsConstructor
 public class EmailCheckUtil {

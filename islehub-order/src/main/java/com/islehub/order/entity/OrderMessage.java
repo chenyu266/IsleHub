@@ -3,6 +3,9 @@ package com.islehub.order.entity;
 import lombok.Data;
 import java.time.LocalDateTime;
 
+/**
+ * 订单消息表实体，用于MQ消息本地表模式，支持发送失败重试
+ */
 @Data
 public class OrderMessage {
     private Long id;

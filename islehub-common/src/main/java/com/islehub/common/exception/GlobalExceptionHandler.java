@@ -13,6 +13,9 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+/**
+ * 全局异常处理器：统一拦截 Sa-Token 认证授权异常、业务异常、参数校验异常及未知异常，返回标准 Result 响应
+ */
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {

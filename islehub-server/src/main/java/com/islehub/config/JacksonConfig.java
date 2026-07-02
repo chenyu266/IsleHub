@@ -10,6 +10,9 @@ import org.springframework.context.annotation.Configuration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
+/**
+ * Jackson 序列化配置 — 统一 LocalDateTime 格式为 yyyy-MM-dd HH:mm:ss。
+ */
 @Configuration
 public class JacksonConfig {
 

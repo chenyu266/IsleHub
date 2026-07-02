@@ -3,6 +3,9 @@ package com.islehub.common.result;
 import com.islehub.common.enums.RCode;
 import lombok.*;
 
+/**
+ * 统一 API 响应包装类：封装状态码、消息和数据，提供 ok/fail/page 静态工厂方法简化 Controller 层返回
+ */
 @Getter
 @ToString(exclude = "data")
 @AllArgsConstructor(access = AccessLevel.PRIVATE)

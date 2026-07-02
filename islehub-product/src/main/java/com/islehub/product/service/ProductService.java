@@ -9,6 +9,9 @@ import lombok.Data;
 import java.math.BigDecimal;
 import java.util.List;
 
+/**
+ * 商品服务接口，提供商品管理、SKU 查询及库存操作功能。
+ */
 public interface ProductService extends IService<Product> {
     Page<Product> pageProducts(int page, int pageSize, String keyword, Long categoryId, Integer status);
     Product getDetail(Long id);

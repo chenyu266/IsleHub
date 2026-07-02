@@ -6,6 +6,9 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import java.math.BigDecimal;
 
+/**
+ * 商品 SKU 实体类，记录规格、价格和库存信息。
+ */
 @Data
 @TableName("product_sku")
 public class ProductSku {

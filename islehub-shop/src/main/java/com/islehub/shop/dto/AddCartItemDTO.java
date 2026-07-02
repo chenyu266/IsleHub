@@ -4,6 +4,9 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
+/**
+ * 添加购物车商品请求参数 —— 包含 SKU ID 和数量。
+ */
 @Data
 public class AddCartItemDTO {
     @NotNull(message = "SKU ID 不能为空")

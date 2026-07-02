@@ -5,6 +5,10 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
+/**
+ * 修改用户名请求参数，包含新的用户名并校验格式合法性
+ */
+
 @Data
 public class UpdateUsernameDTO {
     @NotBlank(message = "用户名不能为空")

@@ -18,6 +18,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 购物车业务服务 —— 基于 Redis 的购物车管理，使用 CAS 机制保证并发安全。
+ */
 @Service
 @RequiredArgsConstructor
 public class CartService {

@@ -7,6 +7,9 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 import java.time.LocalDateTime;
 
+/**
+ * 订单发货信息实体类，映射order_shipping表
+ */
 @Data
 @TableName("order_shipping")
 public class OrderShipping {

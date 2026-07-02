@@ -6,6 +6,10 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
+/**
+ * 管理员新增用户请求参数，包含用户名、密码、邮箱、角色类型和状态等字段
+ */
+
 @Data
 public class UserAddDTO {
 

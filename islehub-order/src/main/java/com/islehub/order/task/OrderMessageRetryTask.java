@@ -12,6 +12,9 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * 订单消息重试定时任务，定期扫描并重试发送失败的MQ消息
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor

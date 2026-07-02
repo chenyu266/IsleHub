@@ -7,6 +7,9 @@ import com.islehub.product.service.ProductService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * 商城端商品控制器，提供商品分页查询和详情接口。
+ */
 @RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/shop/product")

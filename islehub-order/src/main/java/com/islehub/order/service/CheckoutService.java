@@ -28,6 +28,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * 结算服务，负责下单过程中的库存预扣、订单创建及MQ消息发送
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor

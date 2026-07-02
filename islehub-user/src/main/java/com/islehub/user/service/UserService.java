@@ -8,6 +8,10 @@ import com.islehub.user.dto.UserRegisterDTO;
 import com.islehub.user.dto.UserUpdateDTO;
 import com.islehub.user.entity.User;
 
+/**
+ * 用户服务接口，定义用户注册、登录、信息管理及管理员用户操作等方法
+ */
+
 public interface UserService extends IService<User> {
     Result<String> login(String account, String password);
     void sendEmailCode(String email);

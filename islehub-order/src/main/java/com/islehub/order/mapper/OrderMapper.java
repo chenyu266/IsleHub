@@ -6,6 +6,9 @@ import com.islehub.order.entity.Order;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+/**
+ * 订单数据访问层，包含自定义分页查询和详情查询
+ */
 @Mapper
 public interface OrderMapper extends BaseMapper<Order> {
 

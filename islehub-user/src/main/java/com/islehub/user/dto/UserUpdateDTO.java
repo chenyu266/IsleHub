@@ -7,6 +7,10 @@ import lombok.Data;
 
 import java.time.LocalDate;
 
+/**
+ * 管理员编辑用户信息请求参数，支持修改邮箱、用户名、昵称、手机号等字段
+ */
+
 @Data
 public class UserUpdateDTO {
 

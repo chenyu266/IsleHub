@@ -6,6 +6,9 @@ import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+/**
+ * RabbitMQ 消息队列配置 — 订单库存确认的 Topic 交换机、队列及死信队列。
+ */
 @Configuration
 public class RabbitConfig {
 

@@ -13,6 +13,9 @@ import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
+/**
+ * C 端收货地址控制器 —— 提供收货地址的增删改查接口。
+ */
 @SaCheckLogin
 @Tag(name = "商城-地址", description = "收货地址增删改查")
 @RequiredArgsConstructor
