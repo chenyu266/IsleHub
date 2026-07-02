@@ -50,6 +50,10 @@ public final class RedisKeys {
         return PREFIX + ":email:change:pending:" + userId;
     }
 
+    public static String emailChangeOldVerified(Long userId) {
+        return PREFIX + ":email:change:oldok:" + userId;
+    }
+
     public static String productDetail(Long id) {
         return PREFIX + ":product:detail:" + id;
     }

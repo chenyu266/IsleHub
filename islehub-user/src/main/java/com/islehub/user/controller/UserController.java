@@ -93,10 +93,17 @@ public class UserController {
         return Result.ok();
     }
 
-    @Operation(summary = "验证旧邮箱 — 校验身份后向新邮箱发送验证码")
+    @Operation(summary = "验证旧邮箱 — 校验身份")
     @PostMapping("/email/verify")
     public Result<Void> verifyOldCode(@Valid @RequestBody VerifyOldCodeDTO dto) {
         userService.verifyOldEmailCode(StpUtil.getLoginIdAsLong(), dto.getOldCode());
+        return Result.ok();
+    }
+
+    @Operation(summary = "向新邮箱发送验证码 — 需先通过旧邮箱验证")
+    @PostMapping("/email/send-new")
+    public Result<Void> sendNewCode() {
+        userService.sendNewEmailCode(StpUtil.getLoginIdAsLong());
         return Result.ok();
     }
 

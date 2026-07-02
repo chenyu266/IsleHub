@@ -200,16 +200,25 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             throw new BizException("验证码错误");
         }
 
-        // 取出待绑定新邮箱，向其发送验证码
+        // 标记旧邮箱已验证，清除验证码（防止复用）
+        stringRedisTemplate.opsForValue()
+                .set(RedisKeys.emailChangeOldVerified(userId), "1", RedisKeys.EMAIL_CODE_TTL);
+        stringRedisTemplate.delete(RedisKeys.emailChangeCode(oldEmail));
+    }
+
+    @Override
+    public void sendNewEmailCode(Long userId) {
+        // 必须已通过旧邮箱验证
+        if (Boolean.FALSE.equals(stringRedisTemplate.hasKey(
+                RedisKeys.emailChangeOldVerified(userId)))) {
+            throw new BizException("请先验证旧邮箱");
+        }
         String newEmail = stringRedisTemplate.opsForValue()
                 .get(RedisKeys.emailChangePending(userId));
         if (newEmail == null) {
             throw new BizException("操作已过期，请重新发起换绑");
         }
         sendCodeToEmail(newEmail, RedisKeys.emailChangeNewCode(newEmail));
-
-        // 清除旧邮箱验证码（防止复用）
-        stringRedisTemplate.delete(RedisKeys.emailChangeCode(oldEmail));
     }
 
     @Override
@@ -258,6 +267,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         // 清理 Redis
         stringRedisTemplate.delete(RedisKeys.emailChangePending(userId));
         stringRedisTemplate.delete(RedisKeys.emailChangeNewCode(newEmail));
+        stringRedisTemplate.delete(RedisKeys.emailChangeOldVerified(userId));
     }
 
     private static final int MAX_CODE_ATTEMPTS = 5;
